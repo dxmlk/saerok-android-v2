@@ -65,7 +65,7 @@ export default function SaerokList({
           style={styles.card}
           onPress={() =>
             router.push({
-              pathname: "/(tabs)/saerok/[collectionId]",
+              pathname: "/saerok/[collectionId]",
               params: { collectionId: String(item.collectionId) },
             })
           }

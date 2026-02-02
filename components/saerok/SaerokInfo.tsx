@@ -21,7 +21,7 @@ export default function SaerokInfo({ item, isMine }: SaerokInfoProps) {
   const sciName = item.bird?.scientificName ?? "";
   const dateText = useMemo(
     () => formatDate(item.discoveredDate),
-    [item.discoveredDate]
+    [item.discoveredDate],
   );
 
   const onGoDex = () => {
@@ -33,7 +33,7 @@ export default function SaerokInfo({ item, isMine }: SaerokInfoProps) {
   };
 
   const onEdit = () => {
-    router.push(`/(tabs)/saerok/write/${item.collectionId}`);
+    router.push(`/saerok/write/${item.collectionId}`);
   };
 
   return (

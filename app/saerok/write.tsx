@@ -23,6 +23,8 @@ import {
   registerImageMetaApi,
 } from "@/services/api/collections";
 import { useSaerokForm } from "@/states/useSaerokForm";
+import { ScrollView } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 export default function SaerokWriteScreen() {
   const router = useRouter();
@@ -32,6 +34,8 @@ export default function SaerokWriteScreen() {
 
   const initializedRef = useRef(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
+
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const {
     form,
@@ -152,13 +156,13 @@ export default function SaerokWriteScreen() {
         const contentType = form.imageFile!.type;
         const { presignedUrl, objectKey } = await getPresignedUrlApi(
           newId,
-          contentType
+          contentType,
         );
 
         await uploadToPresignedUrl(
           presignedUrl,
           form.imageFile!.uri,
-          contentType
+          contentType,
         );
         await registerImageMetaApi(newId, objectKey, contentType);
 
@@ -192,13 +196,13 @@ export default function SaerokWriteScreen() {
         const contentType = form.imageFile.type;
         const { presignedUrl, objectKey } = await getPresignedUrlApi(
           idNum,
-          contentType
+          contentType,
         );
 
         await uploadToPresignedUrl(
           presignedUrl,
           form.imageFile.uri,
-          contentType
+          contentType,
         );
         const meta = await registerImageMetaApi(idNum, objectKey, contentType);
 
@@ -228,94 +232,131 @@ export default function SaerokWriteScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
-      <View style={styles.container}>
-        <Text style={styles.title}>
-          {isEdit ? "새록 편집하기" : "새록 작성하기"}
-        </Text>
-
-        <Pressable
-          style={styles.selector}
-          onPress={() => router.push("/(tabs)/saerok/search-bird")}
+      <View style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: 16,
+            paddingTop: 12,
+            paddingBottom: 120,
+          }}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.selectorLabel}>새</Text>
-          <Text style={styles.selectorValue}>
-            {form.birdName ? form.birdName : "새를 선택하세요"}
+          <Text style={styles.title}>
+            {isEdit ? "새록 편집하기" : "새록 작성하기"}
           </Text>
-          <Text style={styles.chev}>›</Text>
-        </Pressable>
 
-        <Pressable
-          style={styles.selector}
-          onPress={() => router.push("/(tabs)/saerok/search-place")}
-        >
-          <Text style={styles.selectorLabel}>장소</Text>
-          <Text style={styles.selectorValue}>
-            {form.locationAlias
-              ? `${form.locationAlias} (${form.address})`
-              : "장소를 선택하세요"}
-          </Text>
-          <Text style={styles.chev}>›</Text>
-        </Pressable>
-
-        <View style={styles.row}>
-          <Text style={styles.label}>날짜</Text>
-          <TextInput value={form.date} style={styles.input} editable={false} />
-        </View>
-
-        <View style={styles.rowCol}>
-          <Text style={styles.label}>한줄평</Text>
-          <TextInput
-            value={form.memo}
-            onChangeText={setMemo}
-            placeholder="50자 이내로 입력해주세요"
-            placeholderTextColor="#9CA3AF"
-            style={[styles.input, { height: 44 }]}
-            maxLength={50}
-          />
-        </View>
-
-        <View style={styles.row}>
-          <Text style={styles.label}>공개</Text>
           <Pressable
-            onPress={() =>
-              setAccessLevel(
-                form.accessLevel === "PUBLIC" ? "PRIVATE" : "PUBLIC"
-              )
-            }
-            style={styles.toggle}
+            style={styles.selector}
+            onPress={() => router.push("/saerok/search-bird")}
           >
-            <Text style={{ color: "#111827", fontWeight: "700" }}>
-              {form.accessLevel === "PUBLIC" ? "PUBLIC" : "PRIVATE"}
+            <Text style={styles.selectorLabel}>새</Text>
+            <Text style={styles.selectorValue}>
+              {form.birdName ? form.birdName : "새를 선택하세요"}
             </Text>
-          </Pressable>
-        </View>
-
-        <View style={{ marginTop: 14 }}>
-          <Pressable style={styles.imageBtn} onPress={pickImage}>
-            <Text style={{ color: "#111827", fontWeight: "700" }}>
-              {form.imageFile
-                ? "이미지 변경"
-                : isEdit
-                ? "이미지 변경(선택)"
-                : "이미지 선택"}
-            </Text>
+            <Text style={styles.chev}>›</Text>
           </Pressable>
 
-          {form.imagePreviewUrl ? (
-            <Image
-              source={{ uri: form.imagePreviewUrl }}
-              style={styles.preview}
+          <Pressable
+            style={styles.selector}
+            onPress={() => router.push("/saerok/search-place")}
+          >
+            <Text style={styles.selectorLabel}>장소</Text>
+            <Text style={styles.selectorValue}>
+              {form.locationAlias
+                ? `${form.locationAlias} (${form.address})`
+                : "장소를 선택하세요"}
+            </Text>
+            <Text style={styles.chev}>›</Text>
+          </Pressable>
+          <View style={styles.row}>
+            <Text style={styles.label}>날짜</Text>
+
+            <Pressable
+              style={[styles.input, { justifyContent: "center" }]}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={{ color: "#111827" }}>{form.date}</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.rowCol}>
+            <Text style={styles.label}>한줄평</Text>
+            <TextInput
+              value={form.memo}
+              onChangeText={setMemo}
+              placeholder="50자 이내로 입력해주세요"
+              placeholderTextColor="#9CA3AF"
+              style={[
+                styles.input,
+                { height: 96, paddingTop: 12, textAlignVertical: "top" },
+              ]}
+              maxLength={50}
+              multiline
             />
-          ) : null}
-        </View>
+          </View>
 
-        <Pressable
-          onPress={handleSubmit}
-          style={[styles.submit, { opacity: canSubmit ? 1 : 0.4 }]}
-          disabled={!canSubmit}
-        >
-          <Text style={styles.submitText}>{isEdit ? "수정" : "등록"}</Text>
-        </Pressable>
+          <View style={styles.row}>
+            <Text style={styles.label}>공개</Text>
+            <Pressable
+              onPress={() =>
+                setAccessLevel(
+                  form.accessLevel === "PUBLIC" ? "PRIVATE" : "PUBLIC",
+                )
+              }
+              style={styles.toggle}
+            >
+              <Text style={{ color: "#111827", fontWeight: "700" }}>
+                {form.accessLevel === "PUBLIC" ? "PUBLIC" : "PRIVATE"}
+              </Text>
+            </Pressable>
+          </View>
+
+          <View style={{ marginTop: 14 }}>
+            <Pressable style={styles.imageBtn} onPress={pickImage}>
+              <Text style={{ color: "#111827", fontWeight: "700" }}>
+                {form.imageFile
+                  ? "이미지 변경"
+                  : isEdit
+                    ? "이미지 변경(선택)"
+                    : "이미지 선택"}
+              </Text>
+            </Pressable>
+
+            {form.imagePreviewUrl ? (
+              <Image
+                source={{ uri: form.imagePreviewUrl }}
+                style={styles.preview}
+              />
+            ) : null}
+          </View>
+        </ScrollView>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={form.date ? new Date(form.date) : new Date()}
+            mode="date"
+            display="default"
+            onChange={(event, selectedDate) => {
+              setShowDatePicker(false);
+              if (event.type !== "set" || !selectedDate) return;
+
+              const yyyy = selectedDate.getFullYear();
+              const mm = String(selectedDate.getMonth() + 1).padStart(2, "0");
+              const dd = String(selectedDate.getDate()).padStart(2, "0");
+              setDate(`${yyyy}-${mm}-${dd}`);
+            }}
+          />
+        )}
+
+        <View style={styles.bottomBar}>
+          <Pressable
+            onPress={handleSubmit}
+            style={[styles.submit, { opacity: canSubmit ? 1 : 0.4 }]}
+            disabled={!canSubmit}
+          >
+            <Text style={styles.submitText}>{isEdit ? "수정" : "등록"}</Text>
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -384,14 +425,26 @@ const styles = StyleSheet.create({
     backgroundColor: "#F3F4F6",
   },
 
+  bottomBar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 16,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#E5E7EB",
+  },
+
   submit: {
-    marginTop: "auto",
-    marginBottom: 16,
     height: 52,
     borderRadius: 12,
     backgroundColor: "#2563eb",
     alignItems: "center",
     justifyContent: "center",
   },
+
   submitText: { color: "#fff", fontWeight: "800", fontSize: 16 },
 });

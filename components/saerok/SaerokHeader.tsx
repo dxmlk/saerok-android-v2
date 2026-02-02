@@ -11,7 +11,7 @@ export default function SaerokHeader() {
 
       <View style={styles.btnRow}>
         <Pressable
-          onPress={() => router.push("/(tabs)/saerok/search-bird")}
+          onPress={() => router.push("/saerok/search-bird")}
           style={styles.iconBtn}
         >
           <Text style={styles.iconText}>🔎</Text>

@@ -1,4 +1,4 @@
-import ScrapIcon from "@/assets/icon/button/scrap.svg";
+import ScrapIcon from "@/assets/icon/button/ScrapIcon";
 import { LinearGradient } from "expo-linear-gradient";
 import React from "react";
 import {
@@ -64,11 +64,7 @@ export default function DexList({
           <ScrapIcon
             width={18}
             height={18}
-            // 핵심: currentColor를 쓰는 path는 color로 먹습니다
             color={isBookmarked ? "#F6C343" : "#6B7280"}
-            // 어떤 svg는 stroke/fill을 직접 보기도 해서 같이 던져줌(없으면 무시됨)
-            stroke={isBookmarked ? "#F6C343" : "#6B7280"}
-            fill={isBookmarked ? "#F6C343" : "none"}
           />
         </Pressable>
 

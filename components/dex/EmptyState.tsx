@@ -1,7 +1,7 @@
 import React from "react";
 import { Text, View } from "react-native";
 
-import SaerokImage from "@/assets/images/saerok.svg";
+import SaerokImage from "@/assets/images/SaerokImage";
 
 type Props = {
   upperText: string;
@@ -19,7 +19,6 @@ export default function EmptyState({ upperText, lowerText }: Props) {
       </Text>
 
       <View style={{ alignItems: "center", marginTop: 40 }}>
-        {/* RN SVG는 className 대신 props로 제어 */}
         <SaerokImage width={220} height={220} />
       </View>
     </View>

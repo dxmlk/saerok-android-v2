@@ -64,9 +64,15 @@ export const registerImageMetaApi = async (
 export interface CollectionItem {
   collectionId: number;
   imageUrl: string | null;
+  thumbnailImageUrl: string | null;
   koreanName: string | null;
+  likeCount: number;
+  commentCount: number;
+  createdAt: string; // ISO datetime
+  discoveredDate: string; // YYYY-MM-DD
 }
 
+// 서버 고치면 다시 사용할 코드
 export const fetchMyCollections = async (): Promise<CollectionItem[]> => {
   try {
     const res = await axiosPrivate.get<{ items: CollectionItem[] }>(
@@ -78,6 +84,39 @@ export const fetchMyCollections = async (): Promise<CollectionItem[]> => {
     throw e;
   }
 };
+
+// Mock 데이터 반환
+// export const fetchMyCollections = async (): Promise<CollectionItem[]> => {
+//   if (__DEV__) {
+//     return [
+//       {
+//         collectionId: 1,
+//         imageUrl: "https://example.com/images/collection1.jpg",
+//         thumbnailImageUrl: "https://cdn.example.com/thumbnails/abc.webp",
+//         koreanName: "까치",
+//         likeCount: 15,
+//         commentCount: 7,
+//         createdAt: "2024-03-15T10:30:00",
+//         discoveredDate: "2025-01-15",
+//       },
+//       {
+//         collectionId: 2,
+//         imageUrl: null,
+//         thumbnailImageUrl: null,
+//         koreanName: "이름 모를 새",
+//         likeCount: 0,
+//         commentCount: 0,
+//         createdAt: "2025-01-01T12:00:00",
+//         discoveredDate: "2025-01-01",
+//       },
+//     ];
+//   }
+
+//   const res = await axiosPrivate.get<{ items: CollectionItem[] }>(
+//     "/collections/me",
+//   );
+//   return res.data.items;
+// };
 
 export interface CollectionDetail {
   collectionId: number;

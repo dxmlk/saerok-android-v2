@@ -1,12 +1,14 @@
-import DexIcon from "@/assets/icon/nav/dex.svg";
-import MapIcon from "@/assets/icon/nav/map.svg";
-import MyIcon from "@/assets/icon/nav/my.svg";
+import DexIcon from "@/assets/icon/nav/DexIcon";
+import MapIcon from "@/assets/icon/nav/MapIcon";
+import MyIcon from "@/assets/icon/nav/MyIcon";
+import SaerokIcon from "@/assets/icon/nav/SaerokIcon";
 import NestIcon from "@/assets/icon/nav/NestIcon";
-import SaerokIcon from "@/assets/icon/nav/saerok.svg";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { tabBarHeightAtom } from "@/states/tabBarAtom";
+import { useSetRecoilState } from "recoil";
 
 const ICONS: Record<string, React.FC<any>> = {
   saerok: SaerokIcon,
@@ -29,16 +31,19 @@ export default function FloatingTabBar({
   navigation,
 }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
+  const setTabBarHeight = useSetRecoilState(tabBarHeightAtom);
 
   return (
     <View
-      style={{ bottom: insets.bottom + 12 }}
-      className="absolute left-0 right-0 items-center"
       pointerEvents="box-none"
+      style={[styles.wrapper, { bottom: insets.bottom + 12 }]}
+      onLayout={(e) => {
+        setTabBarHeight(e.nativeEvent.layout.height);
+      }}
     >
-      <View className="flex-row items-center justify-between px-6 py-3 bg-white rounded-full shadow-lg">
-        {state.routes.map((route, index) => {
-          const isFocused = state.index === index;
+      <View style={styles.bar}>
+        {state.routes.map((route, idx) => {
+          const isFocused = state.index === idx;
           const name = route.name;
           const isCenter = name === "nest";
 
@@ -56,8 +61,6 @@ export default function FloatingTabBar({
 
           const Icon = ICONS[name];
           const color = isFocused ? "#91BFFF" : "#979797";
-
-          // NestIcon 점 색깔 바꾸기 위해
           const iconProps =
             name === "nest" ? { dotColor: isFocused ? "#ffffff" : color } : {};
 
@@ -65,23 +68,18 @@ export default function FloatingTabBar({
             <Pressable
               key={route.key}
               onPress={onPress}
-              className={`flex-1 items-center justify-center ${
-                isCenter ? "" : "gap-1"
-              }`}
+              style={[styles.item, !isCenter && styles.itemGap]}
+              hitSlop={10}
             >
-              <>
-                <Icon
-                  width={24}
-                  height={24}
-                  color={color}
-                  stroke={color}
-                  fill={isFocused ? color : "none"}
-                  {...iconProps}
-                />
-                <Text className="text-[11px]" style={{ color }}>
-                  {LABELS[name]}
-                </Text>
-              </>
+              <Icon
+                width={24}
+                height={24}
+                color={color}
+                stroke={color}
+                fill={isFocused ? color : "none"}
+                {...iconProps}
+              />
+              <Text style={[styles.label, { color }]}>{LABELS[name]}</Text>
             </Pressable>
           );
         })}
@@ -89,3 +87,41 @@ export default function FloatingTabBar({
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrapper: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  bar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: "#ffffff",
+    borderRadius: 999,
+
+    // iOS shadow
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+
+    // Android shadow
+    elevation: 8,
+  },
+  item: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  itemGap: {
+    gap: 4,
+  },
+  label: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
+});

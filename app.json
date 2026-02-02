@@ -42,7 +42,9 @@
             "kotlinVersion": "2.1.21"
           }
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-font"
     ],
     "extra": {
       "router": {},

@@ -45,7 +45,7 @@ export default function SaerokMain({
 
       <Pressable
         style={styles.fab}
-        onPress={() => router.push("/(tabs)/saerok/write")}
+        onPress={() => router.push("/saerok/write")}
       >
         <Text style={{ color: "#fff", fontWeight: "900", fontSize: 18 }}>
           ＋

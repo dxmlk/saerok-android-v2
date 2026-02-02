@@ -2,25 +2,13 @@ import SaerokHeader from "@/components/saerok/SaerokHeader";
 import SaerokList from "@/components/saerok/SaerokList";
 import SaerokMain from "@/components/saerok/SaerokMain";
 import React, { useCallback, useState } from "react";
-import {
-  Animated,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  View,
-} from "react-native";
+import { Animated, RefreshControl, StyleSheet, View } from "react-native";
 
 export default function SaerokScreen() {
   const [opacity] = useState(new Animated.Value(1));
   const [refreshing, setRefreshing] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const onScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: new Animated.Value(0) } } }],
-    { useNativeDriver: false }
-  );
-
-  // 간단 버전: scrollY에 따라 opacity 계산
   const handleScroll = (e: any) => {
     const y = e.nativeEvent.contentOffset.y ?? 0;
     const next = Math.max(0, 1 - y / 384);
@@ -37,22 +25,26 @@ export default function SaerokScreen() {
     <View style={styles.root}>
       <SaerokHeader />
 
-      <ScrollView
+      <Animated.FlatList
+        data={[{ key: "list" }]} // 더미 1개
+        keyExtractor={(it) => it.key}
+        renderItem={() => (
+          <View style={{ paddingHorizontal: 12 }}>
+            <SaerokList refreshKey={refreshKey} />
+          </View>
+        )}
         contentContainerStyle={{ paddingTop: 76, paddingBottom: 120 }}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-      >
-        <Animated.View style={{ opacity }}>
-          <SaerokMain refreshKey={refreshKey} />
-        </Animated.View>
-
-        <View style={{ paddingHorizontal: 12 }}>
-          <SaerokList refreshKey={refreshKey} />
-        </View>
-      </ScrollView>
+        ListHeaderComponent={
+          <Animated.View style={{ opacity }}>
+            <SaerokMain refreshKey={refreshKey} />
+          </Animated.View>
+        }
+      />
     </View>
   );
 }

@@ -18,7 +18,7 @@ export default function SaerokDetailHeader({
   const onBack = () => router.back();
 
   const onEdit = () => {
-    router.push(`/(tabs)/saerok/write/${collectionId}`);
+    router.push(`/saerok/write/${collectionId}`);
   };
 
   const onGoDex = () => {
@@ -39,7 +39,7 @@ export default function SaerokDetailHeader({
       [
         { text: "돌아가기", style: "cancel" },
         { text: "신고하기", style: "destructive" },
-      ]
+      ],
     );
   };
 

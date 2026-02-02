@@ -2,6 +2,7 @@ import {
   getAccessToken,
   removeAccessToken,
   setAccessToken,
+  clearTokens,
 } from "../lib/tokenStore";
 import { getUserInfo, User } from "../services/api/user";
 import React, {
@@ -50,7 +51,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await removeAccessToken();
+    await clearTokens();
     setUser(null);
   }, []);
 
