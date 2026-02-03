@@ -17,6 +17,8 @@ export interface UserInfoResponse {
   nickname: string;
   email: string;
   joinedDate: string;
+  profileImageUrl: string | null;
+  thumbnailImageUrl: string | null;
 }
 
 export const getUserInfo = async (): Promise<UserInfoResponse> => {

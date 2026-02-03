@@ -13,6 +13,8 @@ export interface User {
   nickname: string;
   email: string;
   joinedDate: string;
+  profileImageUrl: string | null;
+  thumbnailImageUrl: string | null;
 }
 
 interface AuthContextProps {
@@ -30,8 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
+    setLoading(true);
     try {
       const token = await getAccessToken();
+      console.log("[Auth] token:", token ? "EXISTS" : "NULL");
       if (!token) {
         setUser(null);
         return false;

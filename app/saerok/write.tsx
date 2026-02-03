@@ -12,6 +12,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView } from "react-native";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 import { uploadToPresignedUrl } from "@/lib/uploadPresigned";
 import {
@@ -23,18 +25,18 @@ import {
   registerImageMetaApi,
 } from "@/services/api/collections";
 import { useSaerokForm } from "@/states/useSaerokForm";
-import { ScrollView } from "react-native";
-import DateTimePicker from "@react-native-community/datetimepicker";
 
 export default function SaerokWriteScreen() {
   const router = useRouter();
-  const { collectionId } = useLocalSearchParams<{ collectionId?: string }>();
+  const { collectionId, birdName } = useLocalSearchParams<{
+    collectionId?: string;
+    birdName?: string;
+  }>();
   const isEdit = !!collectionId;
   const idNum = collectionId ? Number(collectionId) : null;
 
   const initializedRef = useRef(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
-
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const {
@@ -54,12 +56,11 @@ export default function SaerokWriteScreen() {
     resetForm,
   } = useSaerokForm();
 
-  // 1) 진입 초기화
+  // 초기 날짜 세팅
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    // 기본값 날짜
     if (!form.date) {
       const d = new Date();
       const yyyy = d.getFullYear();
@@ -69,7 +70,7 @@ export default function SaerokWriteScreen() {
     }
   }, [form.date, setDate]);
 
-  // 2) 수정 모드면 edit detail 로딩 → form 채우기
+  // 편집 모드 로딩
   useEffect(() => {
     if (!isEdit || !idNum) return;
 
@@ -79,7 +80,11 @@ export default function SaerokWriteScreen() {
         const data = await fetchEditCollectionDetail(idNum);
 
         setBirdId(data.birdId);
-        setBirdName(data.birdId ? null : ""); // birdName은 search-bird에서 다시 채우는 구조 권장
+        if (typeof birdName === "string" && birdName.length > 0) {
+          setBirdName(birdName);
+        } else {
+          setBirdName(form.birdName ?? "");
+        }
         setDate(data.discoveredDate);
         setLatitude(data.latitude);
         setLongitude(data.longitude);
@@ -97,7 +102,7 @@ export default function SaerokWriteScreen() {
         setLoadingEdit(false);
       }
     })();
-  }, [isEdit, idNum]);
+  }, [isEdit, idNum, router]);
 
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -124,7 +129,6 @@ export default function SaerokWriteScreen() {
   };
 
   const canSubmit = useMemo(() => {
-    // 등록은 이미지 필수, 수정은 이미지 없어도 가능(기존 이미지 유지)
     if (!form.date || !form.address || !form.locationAlias || !form.memo)
       return false;
     if (!isEdit && !form.imageFile) return false;
@@ -139,7 +143,6 @@ export default function SaerokWriteScreen() {
 
     try {
       if (!isEdit) {
-        // ====== 등록 ======
         const collectionRes = await createCollectionApi({
           birdId: form.birdId,
           discoveredDate: form.date,
@@ -172,7 +175,6 @@ export default function SaerokWriteScreen() {
         return;
       }
 
-      // ====== 수정 ======
       if (!idNum) return;
 
       await patchCollectionApi(idNum, {
@@ -187,7 +189,6 @@ export default function SaerokWriteScreen() {
         accessLevel: form.accessLevel,
       });
 
-      // 이미지 새로 선택한 경우만 업로드
       if (form.imageFile) {
         if (form.imageId) {
           await deleteCollectionImageApi(idNum, form.imageId);
@@ -205,8 +206,6 @@ export default function SaerokWriteScreen() {
           contentType,
         );
         const meta = await registerImageMetaApi(idNum, objectKey, contentType);
-
-        // 최신 imageId 반영
         setImageId(meta.imageId);
       }
 
@@ -237,7 +236,7 @@ export default function SaerokWriteScreen() {
           contentContainerStyle={{
             paddingHorizontal: 16,
             paddingTop: 12,
-            paddingBottom: 120,
+            paddingBottom: 160,
           }}
           keyboardShouldPersistTaps="handled"
         >
@@ -268,9 +267,9 @@ export default function SaerokWriteScreen() {
             </Text>
             <Text style={styles.chev}>›</Text>
           </Pressable>
+
           <View style={styles.row}>
             <Text style={styles.label}>날짜</Text>
-
             <Pressable
               style={[styles.input, { justifyContent: "center" }]}
               onPress={() => setShowDatePicker(true)}
@@ -363,14 +362,12 @@ export default function SaerokWriteScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: 16, paddingTop: 12, flex: 1 },
   title: {
     fontSize: 20,
     fontWeight: "800",
     color: "#111827",
     marginBottom: 14,
   },
-
   selector: {
     height: 56,
     borderWidth: 1,
@@ -398,7 +395,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     color: "#111827",
   },
-
   toggle: {
     flex: 1,
     height: 40,
@@ -408,7 +404,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   imageBtn: {
     height: 44,
     borderRadius: 10,
@@ -424,7 +419,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#F3F4F6",
   },
-
   bottomBar: {
     position: "absolute",
     left: 0,
@@ -437,7 +431,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#E5E7EB",
   },
-
   submit: {
     height: 52,
     borderRadius: 12,
@@ -445,6 +438,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   submitText: { color: "#fff", fontWeight: "800", fontSize: 16 },
 });

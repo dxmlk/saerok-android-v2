@@ -5,6 +5,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 export type SaerokDetailHeaderProps = {
   collectionId: number;
   birdId: number | null;
+  birdName?: string | null;
   isMine: boolean;
 };
 
@@ -17,19 +18,8 @@ export default function SaerokDetailHeader({
 
   const onBack = () => router.back();
 
-  const onEdit = () => {
+  const goEdit = () => {
     router.push(`/saerok/write/${collectionId}`);
-  };
-
-  const onGoDex = () => {
-    if (!birdId) {
-      Alert.alert("안내", "이름 모를 새는 도감 이동이 불가능합니다.");
-      return;
-    }
-    router.push({
-      pathname: "/(tabs)/dex/[birdId]" as any,
-      params: { birdId: String(birdId) },
-    });
   };
 
   const onReport = () => {
@@ -37,10 +27,33 @@ export default function SaerokDetailHeader({
       "신고",
       "게시물을 신고하시겠어요?\n가이드에 따라 검토 후 처리됩니다.",
       [
-        { text: "돌아가기", style: "cancel" },
-        { text: "신고하기", style: "destructive" },
+        { text: "취소", style: "cancel" },
+        {
+          text: "신고하기",
+          style: "destructive",
+          onPress: () => {
+            // TODO: 신고 API 연결 시 여기서 호출
+          },
+        },
       ],
     );
+  };
+
+  const onMore = () => {
+    if (isMine) {
+      Alert.alert("내 새록", "원하시는 작업을 선택하세요.", [
+        { text: "취소", style: "cancel" },
+        { text: "편집하기", onPress: goEdit },
+        // 필요하면 삭제도 여기 추가
+        // { text: "삭제하기", style: "destructive", onPress: onDelete },
+      ]);
+      return;
+    }
+
+    Alert.alert("게시물", "원하시는 작업을 선택하세요.", [
+      { text: "취소", style: "cancel" },
+      { text: "신고하기", style: "destructive", onPress: onReport },
+    ]);
   };
 
   return (
@@ -50,20 +63,9 @@ export default function SaerokDetailHeader({
       </Pressable>
 
       <View style={{ flexDirection: "row", gap: 10 }}>
-        {/* 필요하면 도감 버튼 켜세요 */}
-        {/* <Pressable onPress={onGoDex} style={[styles.circleBtn, { backgroundColor: "#2563eb" }]}>
-          <Text style={[styles.btnText, { color: "#fff" }]}>D</Text>
-        </Pressable> */}
-
-        {isMine ? (
-          <Pressable onPress={onEdit} style={styles.circleBtn}>
-            <Text style={styles.btnText}>✎</Text>
-          </Pressable>
-        ) : (
-          <Pressable onPress={onReport} style={styles.circleBtn}>
-            <Text style={styles.btnText}>⋯</Text>
-          </Pressable>
-        )}
+        <Pressable onPress={onMore} style={styles.circleBtn}>
+          <Text style={styles.btnText}>⋯</Text>
+        </Pressable>
       </View>
     </View>
   );

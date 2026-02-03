@@ -73,17 +73,17 @@ export interface CollectionItem {
 }
 
 // 서버 고치면 다시 사용할 코드
-export const fetchMyCollections = async (): Promise<CollectionItem[]> => {
-  try {
-    const res = await axiosPrivate.get<{ items: CollectionItem[] }>(
-      "/collections/me",
-    );
-    return res.data.items;
-  } catch (e) {
-    console.log("[fetchMyCollections] ERROR", e);
-    throw e;
-  }
-};
+// export const fetchMyCollections = async (): Promise<CollectionItem[]> => {
+//   try {
+//     const res = await axiosPrivate.get<{ items: CollectionItem[] }>(
+//       "/collections/me",
+//     );
+//     return res.data.items;
+//   } catch (e) {
+//     console.log("[fetchMyCollections] ERROR", e);
+//     throw e;
+//   }
+// };
 
 // Mock 데이터 반환
 // export const fetchMyCollections = async (): Promise<CollectionItem[]> => {

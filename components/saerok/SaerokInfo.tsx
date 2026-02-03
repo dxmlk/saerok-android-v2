@@ -33,7 +33,13 @@ export default function SaerokInfo({ item, isMine }: SaerokInfoProps) {
   };
 
   const onEdit = () => {
-    router.push(`/saerok/write/${item.collectionId}`);
+    router.push({
+      pathname: "/saerok/write/[collectionId]" as any,
+      params: {
+        collectionId: String(item.collectionId),
+        birdName: birdName ?? "",
+      },
+    });
   };
 
   return (
