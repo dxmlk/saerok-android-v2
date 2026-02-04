@@ -1,6 +1,7 @@
 import SaerokHeader from "@/components/saerok/SaerokHeader";
 import SaerokList from "@/components/saerok/SaerokList";
 import SaerokMain from "@/components/saerok/SaerokMain";
+import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { Animated, RefreshControl, StyleSheet, View } from "react-native";
 
@@ -20,6 +21,13 @@ export default function SaerokScreen() {
     setRefreshKey((k) => k + 1);
     setTimeout(() => setRefreshing(false), 300);
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      // 탭으로 돌아올 때마다 리스트/메인 강제 리프레시 트리거
+      setRefreshKey((k) => k + 1);
+    }, []),
+  );
 
   return (
     <View style={styles.root}>
