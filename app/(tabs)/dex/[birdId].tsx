@@ -14,15 +14,8 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { rfs, rs } from "@/theme";
 
-import ArrowLeftIcon from "@/assets/icon/button/arrow-left.svg";
-import BracketIcon from "@/assets/icon/button/bracket.svg";
-import HabitatIcon from "@/assets/icon/button/habitat.svg";
-import ScrapIcon from "@/assets/icon/button/scrap.svg";
-import SeasonIcon from "@/assets/icon/button/season.svg";
-import SizeIcon from "@/assets/icon/button/size.svg";
-
-// PNG (require 형태 추천)
 const addSaerokPng = require("@/assets/icon/button/write.png");
 
 const seasonMap: Record<string, string> = {
@@ -54,30 +47,6 @@ function joinWithSeparator(
   return items.map((x) => map[x] || x).join(separator);
 }
 
-interface TaxonomyType {
-  orderKor: string;
-  familyKor: string;
-  genusKor: string;
-}
-
-interface SeasonsWithRarityType {
-  season: string;
-  rarity: string;
-  priority: number;
-}
-
-interface BirdDetail {
-  id: number;
-  koreanName: string;
-  scientificName: string;
-  taxonomy: TaxonomyType;
-  description: string;
-  imageUrls: string[];
-  sizeCategory: string;
-  habitats: string[];
-  seasonsWithRarity: SeasonsWithRarityType[];
-}
-
 export default function DexDetailScreen() {
   const router = useRouter();
   const { birdId } = useLocalSearchParams<{ birdId: string }>();
@@ -87,187 +56,119 @@ export default function DexDetailScreen() {
     return Number.isFinite(n) ? n : null;
   }, [birdId]);
 
-  const [bird, setBird] = useState<BirdDetail | null>(null);
+  const [bird, setBird] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // 북마크는 401 가능성이 높으니 "UI만" 유지되게
-  const [bookmarked, setBookmarked] = useState<boolean>(false);
-  const [bookmarkBusy, setBookmarkBusy] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
 
   useEffect(() => {
-    const run = async () => {
-      if (!numericId) {
-        setError("잘못된 birdId 입니다.");
-        setLoading(false);
-        return;
-      }
-
+    if (!numericId) return;
+    (async () => {
       try {
         setLoading(true);
         const res = await fetchDexDetailApi(numericId);
         setBird(res.data);
-      } catch {
-        setError("존재하지 않는 새입니다.");
       } finally {
         setLoading(false);
       }
-    };
-    run();
+    })();
   }, [numericId]);
 
   useEffect(() => {
-    const run = async () => {
-      if (!numericId) return;
-      try {
-        const res = await fetchBookmarkStatusApi(numericId);
-        setBookmarked(!!res.data?.bookmarked);
-      } catch {
-        // 로그인 안 된 경우 401 나도 앱 안 깨지게 조용히 무시
-      }
-    };
-    run();
+    if (!numericId) return;
+    fetchBookmarkStatusApi(numericId)
+      .then((res) => setBookmarked(!!res.data?.bookmarked))
+      .catch(() => {});
   }, [numericId]);
 
-  const seasonText = useMemo(() => {
-    if (!bird) return "";
-    const seasons = bird.seasonsWithRarity?.map((s) => s.season) ?? [];
-    return seasons.length ? joinWithSeparator(seasons, seasonMap, " • ") : "";
-  }, [bird]);
-
-  const habitatText = useMemo(() => {
-    if (!bird) return "";
-    const habitats = bird.habitats ?? [];
-    return habitats.length
-      ? joinWithSeparator(habitats, habitatMap, " • ")
-      : "";
-  }, [bird]);
-
-  const onToggleBookmark = async () => {
-    if (!bird || bookmarkBusy) return;
-
-    setBookmarkBusy(true);
-    // 낙관적 업데이트
-    setBookmarked((prev) => !prev);
-
-    try {
-      await toggleBookmarkApi(bird.id);
-    } catch {
-      // 실패 롤백 (현재 401이면 여기 걸림)
-      setBookmarked((prev) => !prev);
-    } finally {
-      setBookmarkBusy(false);
-    }
-  };
-
-  const onAddSaerok = () => {
-    if (!bird) return;
-    // ✅ RN에서는 navigate state 대신 route param이나 store 추천
-    // 일단 간단히 query로 넘깁니다.
-    router.push({
-      pathname: "/saerok/write",
-      params: { birdId: String(bird.id), birdName: bird.koreanName },
-    });
-  };
-
-  if (loading) {
+  if (loading || !bird) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
-        <View
-          style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-        >
-          <ActivityIndicator />
-          <Text style={{ marginTop: 10, color: "#666" }}>불러오는 중...</Text>
-        </View>
+      <SafeAreaView
+        style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
+      >
+        <ActivityIndicator />
       </SafeAreaView>
     );
   }
 
-  if (error || !bird) {
-    return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
-        <View
-          style={{
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 24,
-          }}
-        >
-          <Text style={{ color: "#111" }}>{error ?? "데이터가 없습니다."}</Text>
-          <Pressable onPress={() => router.back()} style={{ marginTop: 14 }}>
-            <Text style={{ color: "#2563eb" }}>뒤로가기</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const seasonText = joinWithSeparator(
+    bird.seasonsWithRarity.map((s: any) => s.season),
+    seasonMap,
+    " ??",
+  );
 
-  const heroUrl = bird.imageUrls?.[0];
+  const habitatText = joinWithSeparator(bird.habitats, habitatMap, " ??");
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "white" }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-        <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-          {/* Hero Image */}
+      <ScrollView contentContainerStyle={{ paddingBottom: rs(120) }}>
+        <View style={{ paddingHorizontal: rs(16), paddingTop: rs(12) }}>
           <View style={{ position: "relative" }}>
             <Image
-              source={{ uri: heroUrl }}
-              style={{ width: "100%", height: 260, borderRadius: 20 }}
-              resizeMode="cover"
+              source={{ uri: bird.imageUrls[0] }}
+              style={{ width: "100%", height: rs(260), borderRadius: rs(20) }}
             />
 
-            {/* Back */}
+            {/* BACK */}
             <Pressable
               onPress={() => router.back()}
               style={{
                 position: "absolute",
-                top: 12,
-                left: 12,
-                width: 40,
-                height: 40,
-                borderRadius: 20,
+                top: rs(12),
+                left: rs(12),
+                width: rs(40),
+                height: rs(40),
+                borderRadius: rs(20),
                 backgroundColor: "rgba(255,255,255,0.7)",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <ArrowLeftIcon width={17} height={17} />
+              <Text style={{ fontSize: rfs(20) }}>←</Text>
             </Pressable>
 
-            {/* Bookmark */}
+            {/* BOOKMARK */}
             <Pressable
-              onPress={onToggleBookmark}
+              onPress={() => {
+                setBookmarked((p) => !p);
+                toggleBookmarkApi(bird.id).catch(() =>
+                  setBookmarked((p) => !p),
+                );
+              }}
               style={{
                 position: "absolute",
-                bottom: 12,
-                right: 56,
-                width: 40,
-                height: 40,
-                borderRadius: 20,
+                bottom: rs(12),
+                right: rs(56),
+                width: rs(40),
+                height: rs(40),
+                borderRadius: rs(20),
                 backgroundColor: "rgba(255,255,255,0.7)",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              <ScrapIcon
-                width={24}
-                height={24}
-                // svg가 currentColor 기반이면 이 방식이 먹습니다
-                color={bookmarked ? "#F6C343" : "#111"}
-              />
+              <Text style={{ fontSize: rfs(18) }}>
+                {bookmarked ? "★" : "☆"}
+              </Text>
             </Pressable>
 
-            {/* Add Saerok */}
+            {/* ADD SAEROK */}
             <Pressable
-              onPress={onAddSaerok}
+              onPress={() =>
+                router.push({
+                  pathname: "/saerok/write",
+                  params: {
+                    birdId: String(bird.id),
+                    birdName: bird.koreanName,
+                  },
+                })
+              }
               style={{
                 position: "absolute",
-                bottom: 12,
-                right: 12,
-                width: 40,
-                height: 40,
-                borderRadius: 20,
+                bottom: rs(12),
+                right: rs(12),
+                width: rs(40),
+                height: rs(40),
+                borderRadius: rs(20),
                 backgroundColor: "rgba(255,255,255,0.7)",
                 alignItems: "center",
                 justifyContent: "center",
@@ -275,140 +176,79 @@ export default function DexDetailScreen() {
             >
               <Image
                 source={addSaerokPng}
-                style={{ width: 24, height: 24 }}
-                resizeMode="contain"
+                style={{ width: rs(24), height: rs(24) }}
               />
             </Pressable>
           </View>
 
-          {/* Chips row (horizontal) */}
+          {/* CHIPS */}
           <ScrollView
             horizontal
+            style={{ marginTop: rs(16) }}
             showsHorizontalScrollIndicator={false}
-            style={{ marginTop: 16 }}
-            contentContainerStyle={{ gap: 8, paddingHorizontal: 4 }}
           >
-            {!!seasonText && (
+            {seasonText ? (
               <View
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  paddingHorizontal: 12,
-                  height: 33,
-                  borderRadius: 999,
+                  paddingHorizontal: rs(12),
+                  height: rs(33),
                   backgroundColor: "#2563eb",
+                  borderRadius: rs(999),
+                  justifyContent: "center",
+                  marginRight: rs(8),
                 }}
               >
-                <SeasonIcon width={17} height={17} />
-                <Text style={{ color: "white", fontSize: 12 }}>
+                <Text style={{ color: "white", fontSize: rfs(12) }}>
                   {seasonText}
                 </Text>
               </View>
-            )}
+            ) : null}
 
-            {!!habitatText && (
+            {habitatText ? (
               <View
                 style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  paddingHorizontal: 12,
-                  height: 33,
-                  borderRadius: 999,
+                  paddingHorizontal: rs(12),
+                  height: rs(33),
                   backgroundColor: "#2563eb",
+                  borderRadius: rs(999),
+                  justifyContent: "center",
                 }}
               >
-                <HabitatIcon width={17} height={17} />
-                <Text style={{ color: "white", fontSize: 12 }}>
+                <Text style={{ color: "white", fontSize: rfs(12) }}>
                   {habitatText}
                 </Text>
               </View>
-            )}
-
-            {!!bird.sizeCategory && (
-              <View
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 6,
-                  paddingHorizontal: 12,
-                  height: 33,
-                  borderRadius: 999,
-                  backgroundColor: "#2563eb",
-                }}
-              >
-                <SizeIcon width={17} height={17} />
-                <Text style={{ color: "white", fontSize: 12 }}>
-                  {bird.sizeCategory}
-                </Text>
-              </View>
-            )}
+            ) : null}
           </ScrollView>
         </View>
 
-        {/* Names */}
-        <View style={{ marginTop: 26, alignItems: "center" }}>
-          <Text style={{ fontSize: 20, fontWeight: "700", color: "#111" }}>
+        {/* NAME */}
+        <View style={{ marginTop: rs(26), alignItems: "center" }}>
+          <Text style={{ fontSize: rfs(20), fontWeight: "700" }}>
             {bird.koreanName}
           </Text>
-          <Text style={{ marginTop: 4, fontSize: 13, color: "#6b7280" }}>
+          <Text
+            style={{ marginTop: rs(4), fontSize: rfs(13), color: "#6b7280" }}
+          >
             {bird.scientificName}
           </Text>
         </View>
 
-        {/* Taxonomy */}
-        <View style={{ marginTop: 28, paddingHorizontal: 24 }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: "#111" }}>
-            분류
-          </Text>
-
-          <View
-            style={{
-              marginTop: 10,
-              flexDirection: "row",
-              alignItems: "center",
-              flexWrap: "wrap",
-            }}
-          >
-            <Text style={{ color: "#374151", fontSize: 12 }}>
-              {bird.taxonomy?.orderKor}
-            </Text>
-            <View style={{ marginHorizontal: 6 }}>
-              <BracketIcon width={12} height={12} />
-            </View>
-            <Text style={{ color: "#374151", fontSize: 12 }}>
-              {bird.taxonomy?.familyKor}
-            </Text>
-            <View style={{ marginHorizontal: 6 }}>
-              <BracketIcon width={12} height={12} />
-            </View>
-            <Text style={{ color: "#374151", fontSize: 12 }}>
-              {bird.taxonomy?.genusKor}
-            </Text>
-          </View>
-        </View>
-
-        {/* Description */}
-        <View style={{ marginTop: 22, paddingHorizontal: 24 }}>
-          <Text style={{ fontSize: 16, fontWeight: "700", color: "#111" }}>
-            상세 설명
+        {/* DESCRIPTION */}
+        <View style={{ marginTop: rs(22), paddingHorizontal: rs(24) }}>
+          <Text style={{ fontSize: rfs(16), fontWeight: "700" }}>
+            ?곸꽭 ?ㅻ챸
           </Text>
           <Text
             style={{
-              marginTop: 10,
-              fontSize: 13,
-              color: "#111",
-              lineHeight: 20,
+              marginTop: rs(10),
+              fontSize: rfs(13),
+              lineHeight: rfs(20),
             }}
           >
             {bird.description}
           </Text>
         </View>
-
-        {/* ScrollToTopButton은 기존 컴포넌트가 ScrollView ref 기반이면 별도 작업 필요.
-            지금은 DexMain에만 있으니 DexDetail에선 우선 스킵하거나,
-            추후 "scrollRef 전달" 버전으로 개선 추천 */}
       </ScrollView>
     </SafeAreaView>
   );

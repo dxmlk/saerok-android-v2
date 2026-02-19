@@ -12,6 +12,7 @@ import {
   getBirdInfoByNameApi,
 } from "@/services/api/birds";
 import { useSaerokForm } from "@/states/useSaerokForm";
+import { rs } from "@/theme";
 
 export default function SearchBirdScreen() {
   const router = useRouter();
@@ -97,5 +98,5 @@ export default function SearchBirdScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: 16, paddingTop: 12 },
+  container: { paddingHorizontal: rs(16), paddingTop: rs(12) },
 });

@@ -1,4 +1,3 @@
-// src/app/saerok/search-place.tsx
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -14,6 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import SearchBar from "@/components/common/SearchBar";
 import { KakaoPlaceDoc, searchKakaoPlaces } from "@/services/kakaoPlaces";
 import { useSaerokForm } from "@/states/useSaerokForm";
+import { rfs, rs } from "@/theme";
 
 export default function SearchPlaceScreen() {
   const router = useRouter();
@@ -36,11 +36,11 @@ export default function SearchPlaceScreen() {
     setLoading(true);
     try {
       const docs = await searchKakaoPlaces(term, 1, 15);
-      console.log("kakao docs length =", docs.length); // 확인용 콘솔
+      console.log("kakao docs length =", docs.length);
       setItems(docs);
       setSearched(true);
     } catch (e: any) {
-      console.log("kakao search ERROR:", e?.message ?? e); // 확인용 콘솔
+      console.log("kakao search ERROR:", e?.message ?? e);
       setItems([]);
       setSearched(true);
     } finally {
@@ -80,14 +80,18 @@ export default function SearchPlaceScreen() {
 
         {searched ? (
           <FlatList
-            style={{ marginTop: 12 }}
+            style={{ marginTop: rs(12) }}
             data={items}
             keyExtractor={(it) => it.id}
             ListEmptyComponent={
               <Text
-                style={{ textAlign: "center", marginTop: 20, color: "#6B7280" }}
+                style={{
+                  textAlign: "center",
+                  marginTop: rs(20),
+                  color: "#6B7280",
+                }}
               >
-                {loading ? "불러오는 중..." : "검색 결과가 없습니다."}
+                {loading ? "검색 중..." : "검색 결과가 없습니다."}
               </Text>
             }
             renderItem={({ item }) => (
@@ -98,13 +102,13 @@ export default function SearchPlaceScreen() {
                     {item.road_address_name || item.address_name}
                   </Text>
                 </View>
-                <Text style={styles.chev}>›</Text>
+                <Text style={styles.chev}>{">"}</Text>
               </Pressable>
             )}
           />
         ) : (
           <Text
-            style={{ marginTop: 18, textAlign: "center", color: "#6B7280" }}
+            style={{ marginTop: rs(18), textAlign: "center", color: "#6B7280" }}
           >
             검색어를 입력하고 엔터를 눌러주세요.
           </Text>
@@ -115,17 +119,17 @@ export default function SearchPlaceScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: 16, paddingTop: 12, flex: 1 },
+  container: { paddingHorizontal: rs(16), paddingTop: rs(12), flex: 1 },
   row: {
-    height: 68,
-    paddingHorizontal: 12,
-    borderTopWidth: 1,
+    height: rs(68),
+    paddingHorizontal: rs(12),
+    borderTopWidth: rs(1),
     borderTopColor: "#F3F4F6",
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: rs(12),
   },
-  placeName: { fontSize: 14, fontWeight: "800", color: "#111827" },
-  placeAddr: { marginTop: 2, fontSize: 12, color: "#6B7280" },
-  chev: { color: "#9CA3AF", fontSize: 22 },
+  placeName: { fontSize: rfs(14), fontWeight: "800", color: "#111827" },
+  placeAddr: { marginTop: rs(2), fontSize: rfs(12), color: "#6B7280" },
+  chev: { color: "#9CA3AF", fontSize: rfs(22) },
 });

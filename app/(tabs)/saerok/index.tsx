@@ -1,9 +1,9 @@
-import SaerokHeader from "@/components/saerok/SaerokHeader";
 import SaerokList from "@/components/saerok/SaerokList";
 import SaerokMain from "@/components/saerok/SaerokMain";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { Animated, RefreshControl, StyleSheet, View } from "react-native";
+import { rs } from "@/theme";
 
 export default function SaerokScreen() {
   const [opacity] = useState(new Animated.Value(1));
@@ -12,7 +12,7 @@ export default function SaerokScreen() {
 
   const handleScroll = (e: any) => {
     const y = e.nativeEvent.contentOffset.y ?? 0;
-    const next = Math.max(0, 1 - y / 384);
+    const next = Math.max(0, 1 - y / rs(384));
     opacity.setValue(next);
   };
 
@@ -24,24 +24,21 @@ export default function SaerokScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      // 탭으로 돌아올 때마다 리스트/메인 강제 리프레시 트리거
       setRefreshKey((k) => k + 1);
     }, []),
   );
 
   return (
     <View style={styles.root}>
-      <SaerokHeader />
-
       <Animated.FlatList
-        data={[{ key: "list" }]} // 더미 1개
+        data={[{ key: "list" }]}
         keyExtractor={(it) => it.key}
         renderItem={() => (
-          <View style={{ paddingHorizontal: 12 }}>
+          <View style={styles.listWrap}>
             <SaerokList refreshKey={refreshKey} />
           </View>
         )}
-        contentContainerStyle={{ paddingTop: 76, paddingBottom: 120 }}
+        contentContainerStyle={styles.content}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         refreshControl={
@@ -59,4 +56,6 @@ export default function SaerokScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#fff" },
+  content: { paddingTop: rs(0), paddingBottom: rs(120) },
+  listWrap: { paddingHorizontal: rs(12) },
 });

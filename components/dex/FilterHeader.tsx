@@ -8,15 +8,22 @@ import {
   View,
 } from "react-native";
 
+import SeasonIcon from "@/assets/icon/icon/SeasonIcon";
+import HabitatIcon from "@/assets/icon/icon/HabitatIcon";
+import SizeIcon from "@/assets/icon/icon/SizeIcon";
+import ResetIcon from "@/assets/icon/icon/ResetIcon";
+import { rfs, rs } from "@/theme";
+
 export type SelectedFilters = {
-  seasons: string[]; // ["봄","여름",...]
-  habitats: string[]; // ["갯벌",...]
-  sizeCategories: string[]; // ["참새",...]
+  seasons: string[];
+  habitats: string[];
+  sizeCategories: string[];
 };
 
 type Props = {
   selectedFilters: SelectedFilters;
   onFilterChange: (group: keyof SelectedFilters, values: string[]) => void;
+  onResetSearch?: () => void;
 };
 
 const SEASONS = ["봄", "여름", "가을", "겨울"];
@@ -40,6 +47,7 @@ type FilterKind = "계절" | "서식지" | "크기";
 export default function FilterHeader({
   selectedFilters,
   onFilterChange,
+  onResetSearch,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [current, setCurrent] = useState<FilterKind>("계절");
@@ -74,83 +82,53 @@ export default function FilterHeader({
     onFilterChange("seasons", []);
     onFilterChange("habitats", []);
     onFilterChange("sizeCategories", []);
+    onResetSearch?.();
   };
-
-  const isActive = (k: keyof SelectedFilters) => selectedFilters[k].length > 0;
 
   return (
     <View style={styles.row}>
       {/* 계절 */}
       <Pressable
-        style={[
-          styles.pill,
-          isActive("seasons") ? styles.pillActive : styles.pillIdle,
-        ]}
+        style={styles.btn}
         onPress={() => {
           setCurrent("계절");
           setOpen(true);
         }}
       >
-        <Text
-          style={[
-            styles.pillText,
-            isActive("seasons") ? styles.pillTextActive : styles.pillTextIdle,
-          ]}
-        >
-          계절
-        </Text>
+        <SeasonIcon width={rs(24)} height={rs(25)} color="#4190FF" />
+        <Text style={styles.btnText}>계절</Text>
       </Pressable>
 
       {/* 서식지 */}
       <Pressable
-        style={[
-          styles.pill,
-          isActive("habitats") ? styles.pillActive : styles.pillIdle,
-        ]}
+        style={styles.btn}
         onPress={() => {
           setCurrent("서식지");
           setOpen(true);
         }}
       >
-        <Text
-          style={[
-            styles.pillText,
-            isActive("habitats") ? styles.pillTextActive : styles.pillTextIdle,
-          ]}
-        >
-          서식지
-        </Text>
+        <HabitatIcon width={rs(24)} height={rs(24)} color="#4190FF" />
+        <Text style={styles.btnText}>서식지</Text>
       </Pressable>
 
       {/* 크기 */}
       <Pressable
-        style={[
-          styles.pill,
-          isActive("sizeCategories") ? styles.pillActive : styles.pillIdle,
-        ]}
+        style={styles.btn}
         onPress={() => {
           setCurrent("크기");
           setOpen(true);
         }}
       >
-        <Text
-          style={[
-            styles.pillText,
-            isActive("sizeCategories")
-              ? styles.pillTextActive
-              : styles.pillTextIdle,
-          ]}
-        >
-          크기
-        </Text>
+        <SizeIcon width={rs(24)} height={rs(24)} color="#4190FF" />
+        <Text style={styles.btnText}>크기</Text>
       </Pressable>
 
-      {/* 리셋 */}
-      <Pressable style={styles.resetBtn} onPress={resetAll}>
-        <Text style={styles.resetText}>리셋</Text>
+      {/* 리셋: 아이콘만 */}
+      <Pressable style={styles.btn} onPress={resetAll} hitSlop={rs(6)}>
+        <ResetIcon width={rs(17)} height={rs(17)} color="#0D0D0D" />
       </Pressable>
 
-      {/* Modal BottomSheet 대체 */}
+      {/* Modal BottomSheet */}
       <Modal
         visible={open}
         transparent
@@ -216,36 +194,34 @@ export default function FilterHeader({
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
     alignItems: "center",
+    paddingHorizontal: rs(16),
+    paddingVertical: rs(12),
+    gap: rs(6),
   },
 
-  pill: {
-    height: 33,
-    paddingHorizontal: 14,
-    borderRadius: 999,
-    borderWidth: 1,
+  btn: {
+    height: rs(40),
+    paddingTop: rs(9),
+    paddingRight: rs(15),
+    paddingBottom: rs(9),
+    paddingLeft: rs(12),
+    flexDirection: "row",
+    alignItems: "center",
     justifyContent: "center",
+    gap: rs(10),
+    borderRadius: rs(30.5),
+    borderWidth: rs(0.35),
+    borderColor: "#DAE0DE",
+    backgroundColor: "#FEFEFE",
   },
-  pillIdle: { backgroundColor: "#fff", borderColor: "#a1a1aa" },
-  pillActive: { backgroundColor: "#2563eb", borderColor: "#2563eb" },
-  pillText: { fontSize: 13 },
-  pillTextIdle: { color: "#111827" },
-  pillTextActive: { color: "#fff", fontWeight: "600" },
-
-  resetBtn: {
-    marginLeft: "auto",
-    height: 33,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#a1a1aa",
-    backgroundColor: "#fff",
-    justifyContent: "center",
+  btnText: {
+    fontSize: rfs(15),
+    fontWeight: "600",
+    lineHeight: rfs(18),
+    color: "#0D0D0D",
+    textAlign: "center",
   },
-  resetText: { fontSize: 13, color: "#111827" },
 
   backdrop: { flex: 1, backgroundColor: "rgba(0,0,0,0.25)" },
   sheet: {
@@ -254,9 +230,9 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     backgroundColor: "#fff",
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
-    paddingBottom: 18,
+    borderTopLeftRadius: rs(18),
+    borderTopRightRadius: rs(18),
+    paddingBottom: rs(18),
     maxHeight: "70%",
   },
 
@@ -264,41 +240,45 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
+    paddingHorizontal: rs(16),
+    paddingTop: rs(14),
+    paddingBottom: rs(10),
+    borderBottomWidth: rs(1),
     borderBottomColor: "#e5e7eb",
   },
-  sheetTitle: { fontSize: 16, fontWeight: "700", color: "#111827" },
-  done: { fontSize: 14, fontWeight: "700", color: "#2563eb" },
+  sheetTitle: { fontSize: rfs(16), fontWeight: "700", color: "#111827" },
+  done: { fontSize: rfs(14), fontWeight: "700", color: "#2563eb" },
 
   bulkRow: {
     flexDirection: "row",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    gap: rs(10),
+    paddingHorizontal: rs(16),
+    paddingTop: rs(12),
   },
   bulkBtn: {
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(12),
+    borderRadius: rs(10),
     backgroundColor: "#f3f4f6",
   },
-  bulkText: { color: "#111827", fontSize: 13, fontWeight: "600" },
+  bulkText: { color: "#111827", fontSize: rfs(13), fontWeight: "600" },
 
   list: {
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 30,
+    paddingHorizontal: rs(16),
+    paddingTop: rs(14),
+    paddingBottom: rs(30),
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
+    gap: rs(10),
   },
-  item: { paddingVertical: 10, paddingHorizontal: 12, borderRadius: 10 },
+  item: {
+    paddingVertical: rs(10),
+    paddingHorizontal: rs(12),
+    borderRadius: rs(10),
+  },
   itemOff: { backgroundColor: "#f3f4f6" },
   itemOn: { backgroundColor: "#2563eb" },
-  itemText: { fontSize: 13, fontWeight: "600" },
+  itemText: { fontSize: rfs(13), fontWeight: "600" },
   itemTextOff: { color: "#111827" },
   itemTextOn: { color: "#fff" },
 });

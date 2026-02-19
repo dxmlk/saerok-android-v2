@@ -3,6 +3,7 @@ import axios, { InternalAxiosRequestConfig } from "axios";
 import { Platform } from "react-native";
 import axiosPublic from "@/services/axiosPublic";
 import { refreshAccessTokenApi } from "@/services/api/auth";
+import { emitAuthExpired } from "./authEvents";
 
 function resolveBaseURL() {
   const env = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -18,6 +19,7 @@ console.log("[axiosPrivate] baseURL =", baseURL);
 const axiosPrivate = axios.create({
   baseURL,
   timeout: 15000,
+  withCredentials: true,
 });
 
 axiosPrivate.interceptors.request.use(
@@ -56,7 +58,7 @@ axiosPrivate.interceptors.response.use(
     const status = error?.response?.status;
     const original = error?.config;
 
-    // ✅ 401 → refresh 후 1회 재시도
+    //  401 → refresh 후 1회 재시도
     if (status === 401 && original && !original._retry) {
       original._retry = true;
 
@@ -84,6 +86,7 @@ axiosPrivate.interceptors.response.use(
         return axiosPrivate(original);
       } catch (e) {
         await clearTokens();
+        emitAuthExpired();
         return Promise.reject(error);
       } finally {
         isRefreshing = false;

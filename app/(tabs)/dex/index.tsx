@@ -1,4 +1,4 @@
-// src/app/dex/index.tsx
+// app/(tabs)/dex/index.tsx
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -7,8 +7,11 @@ import {
   Pressable,
   Text,
   View,
+  StyleSheet,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Animated } from "react-native";
+import { NativeSyntheticEvent, NativeScrollEvent } from "react-native";
 
 import ScrollToTopButton from "@/components/common/ScrollToTopButton";
 import DexList, { DexItem } from "@/components/dex/DexList";
@@ -23,26 +26,26 @@ import {
   fetchDexItemsApi,
   toggleBookmarkApi,
 } from "@/services/api/birds";
+import { rs } from "@/theme";
 
-/** 웹 매핑 동일 */
 const seasonMap: Record<string, string> = {
-  봄: "spring",
-  여름: "summer",
-  가을: "autumn",
-  겨울: "winter",
+  SPRING: "봄",
+  SUMMER: "여름",
+  AUTUMN: "가을",
+  WINTER: "겨울",
 };
 const habitatMap: Record<string, string> = {
-  갯벌: "mudflat",
-  "경작지/들판": "farmland",
-  "산림/계곡": "forest",
-  해양: "marine",
-  거주지역: "residential",
-  평지숲: "plains_forest",
-  "하천/호수": "river_lake",
-  인공시설: "artificial",
-  동굴: "cave",
-  습지: "wetland",
-  기타: "others",
+  MUDFLAT: "갯벌",
+  FARMLAND: "경작지/들판",
+  FOREST: "산림/계곡",
+  MARINE: "해양",
+  RESIDENTAIL: "거주지역",
+  PLAINS_FOREST: "평지숲",
+  RIVER_LAKE: "하천/호수",
+  ARTIFICIAL: "인공시설",
+  CAVE: "동굴",
+  WETLAND: "습지",
+  OTHERS: "기타",
 };
 const sizeCategoryMap: Record<string, string> = {
   참새: "xsmall",
@@ -62,7 +65,6 @@ export default function DexIndex() {
     sizeCategories?: string | string[];
   }>();
 
-  /** ✅ URL params → 상태 */
   const [searchTerm, setSearchTerm] = useState<string>(toStringValue(sp.q));
   const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({
     seasons: toStringArray(sp.seasons),
@@ -70,7 +72,6 @@ export default function DexIndex() {
     sizeCategories: toStringArray(sp.sizeCategories),
   });
 
-  /** 리스트 */
   const [items, setItems] = useState<DexItem[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -79,17 +80,38 @@ export default function DexIndex() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  /** 북마크 */
   const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
   const [bookmarkOnly, setBookmarkOnly] = useState(false);
   const [bookmarkItems, setBookmarkItems] = useState<DexItem[]>([]);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
 
-  /** 스크롤 탑 */
   const listRef = useRef<FlatList<DexItem> | null>(null);
   const [showTop, setShowTop] = useState(false);
 
-  // params 변경 시 상태 동기화 (search 화면에서 replace로 돌아오므로 여기서 받음)
+  const scrollY = useRef(new Animated.Value(0)).current;
+
+  const HEADER_H = rs(276);
+  const FILTER_H = rs(36);
+  const COLLAPSE_H = HEADER_H + FILTER_H;
+
+  const translateY = scrollY.interpolate({
+    inputRange: [0, COLLAPSE_H],
+    outputRange: [0, -COLLAPSE_H],
+    extrapolate: "clamp",
+  });
+
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, HEADER_H * 0.75, HEADER_H],
+    outputRange: [1, 0.35, 0],
+    extrapolate: "clamp",
+  });
+
+  const filterOpacity = scrollY.interpolate({
+    inputRange: [0, HEADER_H, COLLAPSE_H],
+    outputRange: [1, 1, 0],
+    extrapolate: "clamp",
+  });
+
   useEffect(() => {
     setSearchTerm(toStringValue(sp.q));
     setSelectedFilters({
@@ -97,7 +119,6 @@ export default function DexIndex() {
       habitats: toStringArray(sp.habitats),
       sizeCategories: toStringArray(sp.sizeCategories),
     });
-    // ✅ 새 조건이면 페이징 리셋
     setPage(1);
     setHasMore(true);
     setItems([]);
@@ -131,10 +152,8 @@ export default function DexIndex() {
 
       setItems((prev) => {
         if (mode === "replace") return birds;
-        // 중복 방지
         const prevIds = new Set(prev.map((x) => x.id));
-        const merged = [...prev, ...birds.filter((b) => !prevIds.has(b.id))];
-        return merged;
+        return [...prev, ...birds.filter((b) => !prevIds.has(b.id))];
       });
 
       setHasMore(birds.length === PAGE_SIZE);
@@ -145,16 +164,14 @@ export default function DexIndex() {
     }
   };
 
-  // ✅ 조건(필터/검색어) 바뀌면 page=1 로드
   useEffect(() => {
     if (bookmarkOnly) return;
     loadPage(1, "replace");
   }, [apiFilterParams, searchTerm, bookmarkOnly]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ✅ page 증가 시 append
   useEffect(() => {
     if (bookmarkOnly) return;
-    if (page === 1) return; // page=1은 위에서 처리
+    if (page === 1) return;
     loadPage(page, "append");
   }, [page, bookmarkOnly]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -174,25 +191,20 @@ export default function DexIndex() {
     setPage((p) => p + 1);
   };
 
-  /** 북마크 목록 로드 */
   const loadBookmarks = async () => {
     try {
       const res = await fetchBookmarkListApi();
       const list = res.data?.items ?? res.data ?? [];
       const ids = list.map((x: any) => (typeof x === "number" ? x : x.birdId));
       setBookmarkedIds(new Set(ids));
-    } catch {
-      // 토큰 없으면 무시
-    }
+    } catch {}
   };
 
   useEffect(() => {
     loadBookmarks();
   }, []);
 
-  /** 북마크 토글 */
   const toggleBookmark = async (id: number) => {
-    // optimistic
     setBookmarkedIds((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
@@ -201,10 +213,7 @@ export default function DexIndex() {
 
     try {
       await toggleBookmarkApi(id);
-      // 필요하면 서버와 재동기화
-      // await loadBookmarks();
     } catch {
-      // rollback
       setBookmarkedIds((prev) => {
         const next = new Set(prev);
         next.has(id) ? next.delete(id) : next.add(id);
@@ -213,7 +222,6 @@ export default function DexIndex() {
     }
   };
 
-  /** 북마크 only 로드: birdId → detail → DexItem 형태로 구성 */
   useEffect(() => {
     if (!bookmarkOnly) return;
 
@@ -223,7 +231,7 @@ export default function DexIndex() {
         const res = await fetchBookmarkListApi();
         const list = res.data?.items ?? res.data ?? [];
         const ids: number[] = list.map((x: any) =>
-          typeof x === "number" ? x : x.birdId
+          typeof x === "number" ? x : x.birdId,
         );
 
         const birds = await Promise.all(
@@ -234,7 +242,7 @@ export default function DexIndex() {
               const thumb =
                 Array.isArray(b.imageUrls) && b.imageUrls.length > 0
                   ? b.imageUrls[0]
-                  : b.thumbImageUrl ?? "";
+                  : (b.thumbImageUrl ?? "");
               return {
                 id: b.id,
                 koreanName: b.koreanName,
@@ -244,7 +252,7 @@ export default function DexIndex() {
             } catch {
               return null;
             }
-          })
+          }),
         );
 
         setBookmarkItems(birds.filter((x): x is DexItem => x !== null));
@@ -270,35 +278,60 @@ export default function DexIndex() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F2" }}>
-      <DexMainHeader
-        birdCount={bookmarkOnly ? bookmarkItems.length : items.length}
-        onPressBookmark={() => setBookmarkOnly((v) => !v)}
-        onPressSearch={goSearch}
-        bookmarkActive={bookmarkOnly}
-      />
+      <Animated.View
+        style={[
+          styles.stickyWrap,
+          {
+            transform: [{ translateY }],
+          },
+        ]}
+        pointerEvents="box-none"
+      >
+        <Animated.View style={{ opacity: headerOpacity }}>
+          <DexMainHeader
+            scrollY={scrollY}
+            birdCount={bookmarkOnly ? bookmarkItems.length : items.length}
+            onPressBookmark={() => setBookmarkOnly((v) => !v)}
+            onPressSearch={goSearch}
+            bookmarkActive={bookmarkOnly}
+          />
+        </Animated.View>
 
-      <FilterHeader
-        selectedFilters={selectedFilters}
-        onFilterChange={(group, vals) =>
-          setSelectedFilters((prev) => ({ ...prev, [group]: vals }))
-        }
-      />
+        <Animated.View style={{ opacity: filterOpacity }}>
+          <FilterHeader
+            selectedFilters={selectedFilters}
+            onFilterChange={(group, vals) =>
+              setSelectedFilters((prev) => ({ ...prev, [group]: vals }))
+            }
+            onResetSearch={() => {
+              setSearchTerm("");
+              router.setParams({ q: undefined });
+            }}
+          />
+        </Animated.View>
+      </Animated.View>
 
       {error && (
-        <View style={{ paddingHorizontal: 16, paddingBottom: 10 }}>
-          <Text style={{ color: "red" }}>에러: {error}</Text>
+        <View
+          style={{
+            paddingHorizontal: rs(16),
+            paddingBottom: rs(10),
+            paddingTop: rs(8),
+          }}
+        >
+          <Text style={{ color: "red" }}> {error}</Text>
           <Pressable
             onPress={() => loadPage(1, "replace")}
             style={{
-              marginTop: 8,
-              paddingVertical: 10,
-              paddingHorizontal: 12,
-              borderWidth: 1,
-              borderRadius: 10,
+              marginTop: rs(8),
+              paddingVertical: rs(10),
+              paddingHorizontal: rs(12),
+              borderWidth: rs(1),
+              borderRadius: rs(10),
               alignSelf: "flex-start",
             }}
           >
-            <Text>다시 시도</Text>
+            <Text>다시 불러오기</Text>
           </Pressable>
         </View>
       )}
@@ -309,10 +342,14 @@ export default function DexIndex() {
             style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
           >
             <ActivityIndicator />
-            <Text style={{ marginTop: 10, color: "#666" }}>불러오는 중...</Text>
+            <Text style={{ marginTop: rs(10), color: "#666" }}>
+              즐겨찾기 데이터를 불러오는 중입니다...
+            </Text>
           </View>
         ) : bookmarkItems.length === 0 ? (
           <EmptyState
+            bgColor="gray"
+            topInset={COLLAPSE_H}
             upperText="스크랩한 새가 없어요!"
             lowerText="새 카드 오른쪽 위 스크랩 버튼을 눌러 스크랩해보세요."
           />
@@ -321,20 +358,28 @@ export default function DexIndex() {
             items={bookmarkItems}
             loading={false}
             refreshing={false}
-            onPressItem={(id) => {}}
             bookmarkedIds={bookmarkedIds}
             onToggleBookmark={toggleBookmark}
             listRef={listRef}
-            onScroll={(e) => {
-              const y = e.nativeEvent.contentOffset.y;
-              setShowTop(y > 700);
-            }}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              {
+                useNativeDriver: true,
+                listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                  const y = e.nativeEvent.contentOffset.y;
+                  setShowTop(y > rs(700));
+                },
+              },
+            )}
+            contentTopPadding={COLLAPSE_H} //
           />
         )
       ) : items.length === 0 && !loading ? (
         <EmptyState
-          upperText="아직 도감에 새가 없어요"
-          lowerText="필터를 바꾸거나 새로 고침을 해보세요."
+          bgColor="gray"
+          topInset={COLLAPSE_H}
+          upperText="해당하는 새가 없어요!"
+          lowerText="필터를 바꾸거나 새로고침을 해보세요."
         />
       ) : (
         <DexList
@@ -342,15 +387,21 @@ export default function DexIndex() {
           loading={loading}
           refreshing={refreshing}
           onRefresh={onRefresh}
-          onPressItem={(id) => {}}
           bookmarkedIds={bookmarkedIds}
           onToggleBookmark={toggleBookmark}
           listRef={listRef}
           onEndReached={onEndReached}
-          onScroll={(e) => {
-            const y = e.nativeEvent.contentOffset.y;
-            setShowTop(y > 700);
-          }}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            {
+              useNativeDriver: true,
+              listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                const y = e.nativeEvent.contentOffset.y;
+                setShowTop(y > rs(700));
+              },
+            },
+          )}
+          contentTopPadding={COLLAPSE_H} //
         />
       )}
 
@@ -363,3 +414,13 @@ export default function DexIndex() {
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  stickyWrap: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 50,
+  },
+});

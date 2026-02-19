@@ -4,9 +4,8 @@ export const font = {
   medium: "Pretendard-Medium",
   semibold: "Pretendard-SemiBold",
   bold: "Pretendard-Bold",
-
-  brand: "Moneygraphy-Rounded",
-  logo: "Jalpullineunharu",
+  money: "Moneygraphy-Rounded",
+  haru: "Jalpullineunharu",
 } as const;
 
 export const textStyle = {

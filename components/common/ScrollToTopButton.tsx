@@ -1,6 +1,7 @@
 import React from "react";
 import { Pressable, Text, ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { rfs, rs } from "@/theme";
 
 type Props = {
   visible: boolean;
@@ -14,11 +15,11 @@ export default function ScrollToTopButton({ visible, onPress }: Props) {
 
   const style: ViewStyle = {
     position: "absolute",
-    right: 16,
-    bottom: insets.bottom + 120, // 탭바/홈바 위로 띄우기
-    width: 44,
-    height: 44,
-    borderRadius: 999,
+    right: rs(16),
+    bottom: insets.bottom + rs(120),
+    width: rs(44),
+    height: rs(44),
+    borderRadius: rs(999),
     backgroundColor: "rgba(255,255,255,0.85)",
     alignItems: "center",
     justifyContent: "center",
@@ -27,7 +28,7 @@ export default function ScrollToTopButton({ visible, onPress }: Props) {
 
   return (
     <Pressable onPress={onPress} style={style}>
-      <Text style={{ fontSize: 18 }}>↑</Text>
+      <Text style={{ fontSize: rfs(18) }}>↑</Text>
     </Pressable>
   );
 }

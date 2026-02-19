@@ -2,6 +2,7 @@
 import { BirdInfo } from "@/services/api/birds";
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { rfs, rs } from "@/theme";
 
 type Props = {
   visible: boolean;
@@ -38,24 +39,24 @@ export default function SearchSuggestions({
 
 const styles = StyleSheet.create({
   panel: {
-    marginTop: 8,
+    marginTop: rs(8),
     backgroundColor: "#fff",
-    borderWidth: 1,
+    borderWidth: rs(1),
     borderColor: "#D1D5DB",
-    borderRadius: 10,
+    borderRadius: rs(10),
     overflow: "hidden",
   },
   row: {
-    height: 64,
-    paddingHorizontal: 16,
+    height: rs(64),
+    paddingHorizontal: rs(16),
     justifyContent: "center",
-    borderTopWidth: 1,
+    borderTopWidth: rs(1),
     borderTopColor: "#F3F4F6",
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: rs(12),
   },
-  kor: { fontSize: 14, fontWeight: "700", color: "#111827" },
-  sci: { marginTop: 2, fontSize: 12, color: "#6B7280" },
-  bracket: { fontSize: 22, color: "#9CA3AF" },
+  kor: { fontSize: rfs(14), fontWeight: "700", color: "#111827" },
+  sci: { marginTop: rs(2), fontSize: rfs(12), color: "#6B7280" },
+  bracket: { fontSize: rfs(22), color: "#9CA3AF" },
 });

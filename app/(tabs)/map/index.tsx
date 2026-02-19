@@ -5,6 +5,7 @@ import { WebView } from "react-native-webview";
 
 import { fetchNearbyCollections } from "@/services/api/collections";
 import { useRouter } from "expo-router";
+import { rs } from "@/theme";
 
 type Marker = {
   id: number;
@@ -26,7 +27,6 @@ export default function MapIndex() {
   const [isMineOnly, setIsMineOnly] = useState(false);
   const [ready, setReady] = useState(false);
 
-  /** 위치 권한 + 현재 위치 */
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -41,7 +41,6 @@ export default function MapIndex() {
     })();
   }, []);
 
-  /** 주변 컬렉션 불러오기 */
   const loadNearby = async (c = center) => {
     try {
       const items = await fetchNearbyCollections({
@@ -60,14 +59,13 @@ export default function MapIndex() {
 
       setMarkers(mapped);
 
-      // WebView 지도에 마커 반영
       webRef.current?.postMessage(
-        JSON.stringify({ type: "SET_MARKERS", markers: mapped })
+        JSON.stringify({ type: "SET_MARKERS", markers: mapped }),
       );
     } catch {
       setMarkers([]);
       webRef.current?.postMessage(
-        JSON.stringify({ type: "SET_MARKERS", markers: [] })
+        JSON.stringify({ type: "SET_MARKERS", markers: [] }),
       );
     }
   };
@@ -146,7 +144,6 @@ export default function MapIndex() {
     } catch {}
   });
 
-  // RN WebView에서 postMessage 들어오는 경로(안드로이드 호환)
   window.addEventListener("message", function(e){
     try {
       var msg = JSON.parse(e.data);
@@ -167,29 +164,28 @@ export default function MapIndex() {
 
   return (
     <View style={{ flex: 1 }}>
-      {/* 상단 컨트롤 */}
       <View
         style={{
           position: "absolute",
-          top: 14,
-          left: 14,
-          right: 14,
+          top: rs(14),
+          left: rs(14),
+          right: rs(14),
           zIndex: 10,
           flexDirection: "row",
-          gap: 10,
+          gap: rs(10),
         }}
       >
         <Pressable
           onPress={() => router.push("/saerok/search-place")}
           style={{
             flex: 1,
-            height: 44,
-            borderRadius: 10,
-            borderWidth: 2,
+            height: rs(44),
+            borderRadius: rs(10),
+            borderWidth: rs(2),
             borderColor: "#2563eb",
             backgroundColor: "#fff",
             justifyContent: "center",
-            paddingHorizontal: 14,
+            paddingHorizontal: rs(14),
           }}
         >
           <Text style={{ color: "#6b7280" }}>원하는 장소 검색</Text>
@@ -198,12 +194,12 @@ export default function MapIndex() {
         <Pressable
           onPress={() => setIsMineOnly((x) => !x)}
           style={{
-            height: 44,
-            borderRadius: 10,
+            height: rs(44),
+            borderRadius: rs(10),
             backgroundColor: "#fff",
-            borderWidth: 1,
+            borderWidth: rs(1),
             borderColor: "#ddd",
-            paddingHorizontal: 12,
+            paddingHorizontal: rs(12),
             justifyContent: "center",
           }}
         >
@@ -215,10 +211,10 @@ export default function MapIndex() {
         <Pressable
           onPress={() => loadNearby(center)}
           style={{
-            height: 44,
-            borderRadius: 10,
+            height: rs(44),
+            borderRadius: rs(10),
             backgroundColor: "#2563eb",
-            paddingHorizontal: 12,
+            paddingHorizontal: rs(12),
             justifyContent: "center",
           }}
         >
@@ -234,7 +230,7 @@ export default function MapIndex() {
           try {
             const msg = JSON.parse(e.nativeEvent.data);
             if (msg.type === "MARKER_CLICK") {
-              router.push(`/saerok/${msg.id}`); // 상세 라우트에 맞게 수정
+              router.push(`/saerok/${msg.id}`);
             }
           } catch {}
         }}

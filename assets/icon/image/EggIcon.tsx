@@ -1,0 +1,18 @@
+import * as React from "react";
+import Svg, { Path } from "react-native-svg";
+
+type Props = {
+  width?: number;
+  height?: number;
+};
+
+export default function EggIcon({ width = 23, height = 28 }: Props) {
+  return (
+    <Svg width={width} height={height} viewBox="0 0 23 28" fill="none">
+      <Path
+        d="M11.5 0C13.244 6.20633e-05 14.84 0.742115 16.2148 1.85156C17.5885 2.96019 18.7922 4.47422 19.7832 6.13379C21.7543 9.43494 22.9999 13.51 23 16.5996C22.9999 22.9045 17.8421 27.9999 11.5 28C5.15784 28 0.000119333 22.9046 0 16.5996C0.0001048 13.5099 1.2456 9.43497 3.2168 6.13379C4.20786 4.47412 5.41138 2.96021 6.78516 1.85156C8.16002 0.74208 9.75589 0 11.5 0Z"
+        fill="#FEFEFE"
+      />
+    </Svg>
+  );
+}

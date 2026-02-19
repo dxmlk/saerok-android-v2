@@ -1,9 +1,12 @@
+// components/dex/DexList.tsx
 import ScrapIcon from "@/assets/icon/button/ScrapIcon";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   ActivityIndicator,
   FlatList,
+  FlatListProps,
   Image,
   Pressable,
   RefreshControl,
@@ -11,6 +14,9 @@ import {
   Text,
   View,
 } from "react-native";
+import { Animated } from "react-native";
+import { font } from "@/theme/typography";
+import { rfs, rs } from "@/theme";
 
 export type DexItem = {
   id: number;
@@ -18,57 +24,70 @@ export type DexItem = {
   scientificName: string;
   thumbImageUrl: string;
 };
+
 type Props = {
   items: DexItem[];
   loading?: boolean;
   refreshing?: boolean;
   onRefresh?: () => void;
-  onPressItem: (id: number) => void;
   onToggleBookmark?: (id: number) => void;
   bookmarkedIds?: Set<number>;
-  onScroll?: (e: any) => void;
+  onScroll?: FlatListProps<DexItem>["onScroll"];
   listRef?: React.RefObject<FlatList<DexItem> | null>;
   onEndReached?: () => void;
+
+  contentTopPadding?: number;
 };
+
+const AnimatedFlatList = Animated.createAnimatedComponent(
+  FlatList<DexItem>,
+) as unknown as typeof FlatList<DexItem>;
 
 export default function DexList({
   items,
   loading = false,
   refreshing = false,
   onRefresh,
-  onPressItem,
   onToggleBookmark,
   bookmarkedIds = new Set<number>(),
   onScroll,
   listRef,
-  onEndReached, // ✅ 추가
+  onEndReached,
+  contentTopPadding = 0,
 }: Props) {
+  const router = useRouter();
+
   const renderItem = ({ item }: { item: DexItem }) => {
     const isBookmarked = bookmarkedIds.has(item.id);
 
     return (
       <Pressable
-        onPress={() => onPressItem(item.id)}
+        onPress={() =>
+          router.push({
+            pathname: "/(tabs)/dex/[birdId]" as any,
+            params: { birdId: String(item.id) },
+          })
+        }
         style={styles.card}
         android_ripple={{ color: "rgba(0,0,0,0.06)" }}
       >
-        {/* 이미지 */}
         <Image source={{ uri: item.thumbImageUrl }} style={styles.img} />
 
-        {/* 우상단 스크랩 버튼 */}
         <Pressable
-          onPress={() => onToggleBookmark?.(item.id)}
-          hitSlop={10}
+          onPress={(e) => {
+            e.stopPropagation?.();
+            onToggleBookmark?.(item.id);
+          }}
+          hitSlop={rs(10)}
           style={styles.scrapBtn}
         >
           <ScrapIcon
-            width={18}
-            height={18}
+            width={rs(18)}
+            height={rs(18)}
             color={isBookmarked ? "#F6C343" : "#6B7280"}
           />
         </Pressable>
 
-        {/* 하단 그라데이션(웹의 blur+gradient 느낌 대체) */}
         <LinearGradient
           colors={[
             "rgba(254,254,254,0.0)",
@@ -80,7 +99,6 @@ export default function DexList({
           pointerEvents="none"
         />
 
-        {/* 텍스트 영역 */}
         <View style={styles.textWrap} pointerEvents="none">
           <Text numberOfLines={1} style={styles.kor}>
             {item.koreanName}
@@ -94,17 +112,20 @@ export default function DexList({
   };
 
   return (
-    <FlatList
+    <AnimatedFlatList
       ref={listRef as any}
       data={items}
       keyExtractor={(it) => String(it.id)}
       numColumns={2}
       columnWrapperStyle={styles.row}
-      contentContainerStyle={styles.container}
+      contentContainerStyle={[
+        styles.container,
+        { paddingTop: contentTopPadding + styles.container.paddingTop! },
+      ]}
       renderItem={renderItem}
       onScroll={onScroll}
       scrollEventThrottle={16}
-      onEndReached={onEndReached} // ✅ 이제 스코프에 존재
+      onEndReached={onEndReached}
       onEndReachedThreshold={0.4}
       refreshControl={
         onRefresh ? (
@@ -113,7 +134,7 @@ export default function DexList({
       }
       ListFooterComponent={
         loading ? (
-          <View style={{ paddingVertical: 18 }}>
+          <View style={{ paddingVertical: rs(18) }}>
             <ActivityIndicator />
           </View>
         ) : null
@@ -124,25 +145,24 @@ export default function DexList({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 24, // 웹 px-24 느낌
-    paddingBottom: 24,
+    paddingTop: rs(10), // 由ъ뒪???먯껜 湲곕낯 ?щ갚
+    paddingHorizontal: rs(9),
+    paddingBottom: rs(24),
   },
   row: {
-    gap: 15, // 웹 gap-15
-    marginBottom: 15,
+    gap: rs(7),
+    marginBottom: rs(7),
   },
 
   card: {
     flex: 1,
-    height: 198, // 웹 h-198
-    borderRadius: 10,
+    height: rs(198),
+    borderRadius: rs(20),
     backgroundColor: "#ffffff",
     overflow: "hidden",
-
-    // 웹 boxShadow: 0 0 5px rgba(13,13,13,0.1) 비슷하게
     shadowOpacity: 0.12,
-    shadowRadius: 5,
-    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: rs(5),
+    shadowOffset: { width: rs(0), height: rs(0) },
     elevation: 2,
   },
 
@@ -151,22 +171,21 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     width: "100%",
-    height: 170, // 웹 h-170
+    height: rs(170),
   },
 
   scrapBtn: {
     position: "absolute",
-    top: 9,
-    right: 9,
-    width: 25,
-    height: 25,
+    top: rs(12),
+    right: rs(12),
+    width: rs(17),
+    height: rs(25),
     alignItems: "center",
     justifyContent: "center",
     zIndex: 20,
-    // 드롭섀도우 느낌 (웹 filter drop-shadow 대체)
     shadowOpacity: 0.35,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 },
+    shadowRadius: rs(3),
+    shadowOffset: { width: rs(0), height: rs(1) },
     elevation: 3,
   },
 
@@ -174,8 +193,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    bottom: 26, // 웹 bottom-26
-    height: 26, // 웹 h-26
+    bottom: rs(28),
+    height: rs(31),
     zIndex: 10,
   },
 
@@ -184,22 +203,25 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: 52, // 웹 h-52
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    height: rs(52),
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(8),
     zIndex: 30,
     justifyContent: "flex-start",
   },
 
   kor: {
-    fontSize: 13.5,
+    fontFamily: font.money,
+    fontSize: rfs(15),
     color: "#111111",
-    fontWeight: "600",
+    fontWeight: "400",
+    lineHeight: rfs(17),
   },
 
   sci: {
-    marginTop: 2,
-    fontSize: 11.5,
+    fontSize: rfs(13),
     color: "#7a7a7a",
+    lineHeight: rfs(16),
+    fontWeight: "400",
   },
 });

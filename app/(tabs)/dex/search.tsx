@@ -1,4 +1,3 @@
-// src/app/dex/search.tsx
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -20,6 +19,7 @@ import {
   BirdInfo,
   getBirdInfoByNameApi,
 } from "@/services/api/birds";
+import { rfs, rs } from "@/theme";
 
 export default function DexSearchScreen() {
   const router = useRouter();
@@ -30,7 +30,6 @@ export default function DexSearchScreen() {
     q?: string | string[];
   }>();
 
-  // ✅ dex에서 넘어온 필터를 그대로 유지
   const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({
     seasons: toStringArray(params.seasons),
     habitats: toStringArray(params.habitats),
@@ -55,7 +54,6 @@ export default function DexSearchScreen() {
     })();
   }, []);
 
-  // 자동완성(디바운스)
   useEffect(() => {
     const q = searchTerm.trim();
     if (!q) {
@@ -67,7 +65,7 @@ export default function DexSearchScreen() {
         const res = await autocompleteApi(q);
         const names: string[] = res.data?.suggestions ?? [];
         const infos = await Promise.all(
-          names.map((name) => getBirdInfoByNameApi(name))
+          names.map((name) => getBirdInfoByNameApi(name)),
         );
         setSuggestions(infos.filter((x): x is BirdInfo => x !== null));
       } catch {
@@ -121,7 +119,7 @@ export default function DexSearchScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
-      <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+      <View style={{ paddingHorizontal: rs(16), paddingTop: rs(12) }}>
         <SearchBar
           ref={inputRef}
           value={searchTerm}
@@ -135,7 +133,6 @@ export default function DexSearchScreen() {
           onClear={() => setSearchTerm("")}
           onFocus={() => setShowSuggestions(true)}
           onBlur={() => {
-            // RN은 웹처럼 relatedTarget이 없어서, UX 위해 약간 딜레이로 닫습니다.
             setTimeout(() => setShowSuggestions(false), 150);
           }}
         />
@@ -148,7 +145,7 @@ export default function DexSearchScreen() {
           />
         )}
 
-        <View style={{ marginTop: 10 }}>
+        <View style={{ marginTop: rs(10) }}>
           <FilterHeader
             selectedFilters={selectedFilters}
             onFilterChange={(group, vals) =>
@@ -158,9 +155,8 @@ export default function DexSearchScreen() {
         </View>
       </View>
 
-      {/* 검색어 없을 때만 검색 기록 */}
       {!searchTerm.trim() && (
-        <View style={{ marginTop: 10 }}>
+        <View style={{ marginTop: rs(10) }}>
           {reversedHistory.length === 0 ? (
             <Text style={styles.empty}>
               검색 기록이 없어요! 궁금한 새를 검색해보세요.
@@ -177,7 +173,7 @@ export default function DexSearchScreen() {
                   style={{
                     flexDirection: "row",
                     alignItems: "center",
-                    gap: 12,
+                    gap: rs(12),
                   }}
                 >
                   <Text style={styles.historyDate}>{rec.date}</Text>
@@ -186,9 +182,11 @@ export default function DexSearchScreen() {
                       e.stopPropagation?.();
                       handleDeleteHistory(idx);
                     }}
-                    hitSlop={10}
+                    hitSlop={rs(10)}
                   >
-                    <Text style={{ color: "#6B7280", fontSize: 16 }}>✕</Text>
+                    <Text style={{ color: "#6B7280", fontSize: rfs(16) }}>
+                      X
+                    </Text>
                   </Pressable>
                 </View>
               </Pressable>
@@ -202,21 +200,25 @@ export default function DexSearchScreen() {
 
 const styles = StyleSheet.create({
   empty: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: rs(16),
+    paddingTop: rs(12),
     textAlign: "center",
     color: "#6B7280",
   },
   historyRow: {
-    height: 54,
-    paddingHorizontal: 16,
-    borderTopWidth: 1,
+    height: rs(54),
+    paddingHorizontal: rs(16),
+    borderTopWidth: rs(1),
     borderTopColor: "#F3F4F6",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     backgroundColor: "#fff",
   },
-  historyKeyword: { color: "#111827", fontSize: 14, fontWeight: "600" },
-  historyDate: { color: "#9CA3AF", fontSize: 12 },
+  historyKeyword: {
+    color: "#111827",
+    fontSize: rfs(14),
+    fontWeight: "600",
+  },
+  historyDate: { color: "#9CA3AF", fontSize: rfs(12) },
 });

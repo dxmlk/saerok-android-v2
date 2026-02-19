@@ -21,11 +21,6 @@ export const loginKakaoApi = async (
 };
 
 export const refreshAccessTokenApi = async (): Promise<RefreshResponse> => {
-  const refreshTokenJson = await getRefreshToken();
-  if (!refreshTokenJson) throw new Error("NO_REFRESH_TOKEN");
-
-  const res = await axiosPublic.post<RefreshResponse>("/auth/refresh", {
-    refreshTokenJson,
-  });
+  const res = await axiosPublic.post<RefreshResponse>("/auth/refresh", {});
   return res.data;
 };

@@ -18,6 +18,7 @@ console.log("[axiosPublic] baseURL =", baseURL);
 const axiosPublic = axios.create({
   baseURL,
   timeout: 15000,
+  withCredentials: true,
 });
 
 export default axiosPublic;

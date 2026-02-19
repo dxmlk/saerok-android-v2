@@ -6,31 +6,21 @@ import { AuthProvider } from "../hooks/useAuth";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import { applyDefaultTypography } from "@/theme/applyDefaultTypography";
+import { useAppFonts } from "@/theme/loadfonts";
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    // Pretendard
-    "Pretendard-Light": require("../assets/fonts/Pretendard-Light.ttf"),
-    "Pretendard-Regular": require("../assets/fonts/Pretendard-Regular.ttf"),
-    "Pretendard-Medium": require("../assets/fonts/Pretendard-Medium.ttf"),
-    "Pretendard-SemiBold": require("../assets/fonts/Pretendard-SemiBold.ttf"),
-    "Pretendard-Bold": require("../assets/fonts/Pretendard-Bold.ttf"),
-
-    // Accent fonts
-    "Moneygraphy-Rounded": require("../assets/fonts/Moneygraphy-Rounded.ttf"),
-    Jalpullineunharu: require("../assets/fonts/Jalpullineunharu.ttf"),
-  });
+  const [loaded] = useAppFonts();
 
   useEffect(() => {
-    if (loaded || error) {
+    if (loaded) {
       applyDefaultTypography();
       SplashScreen.hideAsync();
     }
-  }, [loaded, error]);
+  }, [loaded]);
 
-  if (!loaded && !error) return null;
+  if (!loaded) return null;
 
   return (
     <RecoilRoot>

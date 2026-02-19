@@ -7,12 +7,6 @@ export type User = {
   joinedDate?: string | null;
 };
 
-/**
- * =========================
- *  내 회원 정보 조회
- *  GET /user/me
- * =========================
- */
 export interface UserInfoResponse {
   nickname: string;
   email: string;
@@ -32,18 +26,21 @@ export const getUserInfo = async (): Promise<UserInfoResponse> => {
 };
 
 /**
- * =========================
- *  내 회원 정보 수정 (닉네임)
- *  PATCH /user/me
- * =========================
+ * PATCH /user/me
+ * nickname / profile image 모두 optional
  */
 export interface UpdateUserResponse {
   nickname: string;
   email: string;
+  profileImageUrl?: string | null;
+  thumbnailProfileImageUrl?: string | null;
+  thumbnailImageUrl?: string | null; // 서버 응답 키가 섞여있으면 대비
 }
 
 export const updateUserInfo = async (payload: {
-  nickname: string;
+  nickname?: string;
+  profileImageObjectKey?: string;
+  profileImageContentType?: string;
 }): Promise<UpdateUserResponse> => {
   try {
     const res = await axiosPrivate.patch<UpdateUserResponse>(
@@ -57,12 +54,6 @@ export const updateUserInfo = async (payload: {
   }
 };
 
-/**
- * =========================
- *  닉네임 중복 확인
- *  GET /user/check-nickname
- * =========================
- */
 export interface CheckNicknameResponse {
   isAvailable: boolean;
   reason: string;
@@ -74,11 +65,48 @@ export const checkNicknameAvailable = async (payload: {
   try {
     const res = await axiosPublic.get<CheckNicknameResponse>(
       "/user/check-nickname",
-      { params: payload },
+      {
+        params: payload,
+      },
     );
     return res.data;
   } catch (e) {
     console.log("[checkNicknameAvailable] ERROR", e);
+    throw e;
+  }
+};
+
+/**
+ * POST /user/me/profile-image/presign
+ */
+export interface PresignProfileImageResponse {
+  presignedUrl: string;
+  objectKey: string;
+}
+
+export const presignProfileImage = async (payload: {
+  contentType: string;
+}): Promise<PresignProfileImageResponse> => {
+  try {
+    const res = await axiosPrivate.post<PresignProfileImageResponse>(
+      "/user/me/profile-image/presign",
+      payload,
+    );
+    return res.data;
+  } catch (e) {
+    console.log("[presignProfileImage] ERROR", e);
+    throw e;
+  }
+};
+
+/**
+ * DELETE /user/me/profile-image
+ */
+export const deleteProfileImage = async (): Promise<void> => {
+  try {
+    await axiosPrivate.delete("/user/me/profile-image");
+  } catch (e) {
+    console.log("[deleteProfileImage] ERROR", e);
     throw e;
   }
 };

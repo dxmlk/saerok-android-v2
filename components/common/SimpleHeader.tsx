@@ -1,36 +1,63 @@
-import BracketIcon from "@/assets/icon/button/bracket.svg";
-import { useRouter } from "expo-router";
 import React from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { font } from "@/theme/typography";
+import { rfs, rs } from "@/theme";
 
-export default function SimpleHeader({ title }: { title: string }) {
-  const router = useRouter();
+import BackButtonIcon from "@/assets/icon/button/BackButtonIcon";
+import OptionButtonIcon from "@/assets/icon/button/OptionButtonIcon";
 
+type Props = {
+  title: string;
+  onPressBack: () => void;
+  onPressOption?: () => void;
+};
+
+export default function SimpleHeader({
+  title,
+  onPressBack,
+  onPressOption,
+}: Props) {
   return (
-    <View
-      style={{
-        height: 56,
-        backgroundColor: "white",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <Pressable
-        onPress={() => router.back()}
-        style={{
-          position: "absolute",
-          left: 16,
-          height: 56,
-          justifyContent: "center",
-        }}
-        hitSlop={10}
-      >
-        <BracketIcon width={18} height={18} />
+    <View style={styles.wrap}>
+      <Pressable onPress={onPressBack} hitSlop={rs(10)} style={styles.left}>
+        <BackButtonIcon />
       </Pressable>
 
-      <Text style={{ fontSize: 16, fontWeight: "600", color: "#111" }}>
-        {title}
-      </Text>
+      <Text style={styles.title}>{title}</Text>
+
+      <Pressable onPress={onPressOption} hitSlop={rs(10)} style={styles.right}>
+        {onPressOption ? <OptionButtonIcon /> : <View style={{ width: rs(40) }} />}
+      </Pressable>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  wrap: {
+    position: "relative",
+    paddingHorizontal: rs(24),
+    width: "100%",
+    height: rs(84),
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  left: {
+    position: "absolute",
+    left: rs(24),
+    bottom: rs(22),
+  },
+  right: {
+    position: "absolute",
+    right: rs(24),
+    bottom: rs(22),
+  },
+  title: {
+    fontFamily: font.haru,
+    fontSize: rfs(18),
+    fontWeight: "400",
+    color: "#0D0D0D",
+    lineHeight: rfs(20),
+  },
+});

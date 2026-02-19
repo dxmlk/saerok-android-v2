@@ -4,6 +4,7 @@ import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 
 import NicknameInput from "@/components/common/NicknameInput";
 import { updateUserInfo } from "@/services/api/user";
+import { rfs, rs } from "@/theme";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -23,7 +24,6 @@ export default function RegisterScreen() {
     if (!nickname.trim()) return;
 
     if (!isNicknameOk || nicknameErr) {
-      // 중복확인 안 했거나 실패한 상태
       return;
     }
 
@@ -35,7 +35,6 @@ export default function RegisterScreen() {
         setSubmitted(true);
       }
     } catch (e) {
-      // 필요하면 Alert로 바꾸셔도 됩니다.
       console.log("[Register] updateUserInfo ERROR", e);
     } finally {
       setIsLoading(false);
@@ -48,17 +47,16 @@ export default function RegisterScreen() {
         {!submitted ? (
           <>
             <View style={styles.header}>
-              <Pressable onPress={() => router.back()} hitSlop={10}>
+              <Pressable onPress={() => router.back()} hitSlop={rs(10)}>
                 <Text style={styles.back}>←</Text>
               </Pressable>
             </View>
 
             <Text style={styles.title}>회원가입</Text>
+            <View style={{ marginTop: rs(22) }}>
+              <Text style={styles.label}>닉네임 입력</Text>
 
-            <View style={{ marginTop: 22 }}>
-              <Text style={styles.label}>닉네임 입력(필수)</Text>
-
-              <View style={{ marginTop: 8 }}>
+              <View style={{ marginTop: rs(8) }}>
                 <NicknameInput
                   nickname={nickname}
                   setNickname={setNickname}
@@ -71,12 +69,11 @@ export default function RegisterScreen() {
             </View>
           </>
         ) : (
-          <Text style={[styles.title, { marginTop: 92 }]}>
-            회원가입이 완료됐어요
+          <Text style={[styles.title, { marginTop: rs(92) }]}>
+            회원가입이 완료됐습니다
           </Text>
         )}
 
-        {/* 하단 버튼 */}
         {!submitted ? (
           <Pressable
             onPress={handleSubmit}
@@ -102,22 +99,27 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#fff" },
-  page: { flex: 1, paddingHorizontal: 24, paddingTop: 10 },
-  header: { height: 60, justifyContent: "center" },
-  back: { fontSize: 18, fontWeight: "900", color: "#111827" },
-  title: { marginTop: 10, fontSize: 28, fontWeight: "900", color: "#111827" },
-  label: { marginLeft: 4, color: "#111827", fontWeight: "700" },
+  page: { flex: 1, paddingHorizontal: rs(24), paddingTop: rs(10) },
+  header: { height: rs(60), justifyContent: "center" },
+  back: { fontSize: rfs(18), fontWeight: "900", color: "#111827" },
+  title: {
+    marginTop: rs(10),
+    fontSize: rfs(28),
+    fontWeight: "900",
+    color: "#111827",
+  },
+  label: { marginLeft: rs(4), color: "#111827", fontWeight: "700" },
 
   bottomBtn: {
     position: "absolute",
-    left: 24,
-    right: 24,
-    bottom: 44,
-    height: 52,
-    borderRadius: 10,
+    left: rs(24),
+    right: rs(24),
+    bottom: rs(44),
+    height: rs(52),
+    borderRadius: rs(10),
     backgroundColor: "#2563eb",
     alignItems: "center",
     justifyContent: "center",
   },
-  bottomBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  bottomBtnText: { color: "#fff", fontSize: rfs(16), fontWeight: "800" },
 });

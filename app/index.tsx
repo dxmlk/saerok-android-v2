@@ -1,7 +1,11 @@
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Animated, StyleSheet, View } from "react-native";
 import { useAuth } from "../hooks/useAuth";
+
+import SplashLogo from "@/assets/icon/logo/SplashLogo";
+import { LinearGradient } from "expo-linear-gradient";
+import { rfs, rs } from "@/theme";
 
 type Step = "start" | "transition" | "final";
 
@@ -9,6 +13,8 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const { refreshUser } = useAuth();
   const [step, setStep] = useState<Step>("start");
+
+  const opacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
     const t1 = setTimeout(() => setStep("transition"), 1500);
@@ -20,6 +26,15 @@ export default function OnboardingScreen() {
   }, []);
 
   useEffect(() => {
+    if (step !== "transition") return;
+    Animated.timing(opacity, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  }, [step, opacity]);
+
+  useEffect(() => {
     if (step !== "final") return;
     (async () => {
       const loggedIn = await refreshUser();
@@ -27,32 +42,52 @@ export default function OnboardingScreen() {
     })();
   }, [step]);
 
+  const isStart = step === "start";
+  const bg = useMemo(() => {
+    if (isStart) return "gradient";
+    return "white";
+  }, [isStart]);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>새를 기록하다</Text>
-      <View style={styles.logoBox}>
-        <Text style={styles.logoText}>SAEROK</Text>
-      </View>
+      {bg === "gradient" ? (
+        <LinearGradient
+          colors={["#EAF2FF", "#FFFFFF"]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      ) : (
+        <View
+          style={[StyleSheet.absoluteFill, { backgroundColor: "#FFFFFF" }]}
+        />
+      )}
+
+      <Animated.View style={[styles.center, { opacity }]}>
+        <Animated.Text style={[styles.title, { opacity }]}>
+          새를 기록하다
+        </Animated.Text>
+        <View style={styles.logoWrap}>
+          <SplashLogo width={rs(103)} height={rs(53)} color="#4190FF" />
+        </View>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", alignItems: "center" },
-  title: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#2563eb",
-    marginBottom: 10,
-  },
-  logoBox: {
-    width: 140,
-    height: 140,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: "#2563eb",
+  container: { flex: 1 },
+  center: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    gap: rs(8),
   },
-  logoText: { fontSize: 22, fontWeight: "900", color: "#2563eb" },
+  title: {
+    fontSize: rfs(16),
+    color: "#4190FF",
+  },
+  logoWrap: {
+    marginTop: 0,
+  },
 });

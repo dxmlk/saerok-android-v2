@@ -25,6 +25,7 @@ import {
   registerImageMetaApi,
 } from "@/services/api/collections";
 import { useSaerokForm } from "@/states/useSaerokForm";
+import { rfs, rs } from "@/theme";
 
 export default function SaerokWriteScreen() {
   const router = useRouter();
@@ -56,7 +57,6 @@ export default function SaerokWriteScreen() {
     resetForm,
   } = useSaerokForm();
 
-  // 초기 날짜 세팅
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
@@ -70,7 +70,6 @@ export default function SaerokWriteScreen() {
     }
   }, [form.date, setDate]);
 
-  // 편집 모드 로딩
   useEffect(() => {
     if (!isEdit || !idNum) return;
 
@@ -107,7 +106,7 @@ export default function SaerokWriteScreen() {
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("권한 필요", "사진 접근 권한이 필요합니다.");
+      Alert.alert("권한 없음", "이미지 라이브러리 접근 권한이 필요합니다.");
       return;
     }
 
@@ -137,7 +136,7 @@ export default function SaerokWriteScreen() {
 
   const handleSubmit = async () => {
     if (!canSubmit) {
-      Alert.alert("확인", "필수 항목을 확인해주세요.");
+      Alert.alert("입력 확인", "필수 입력 항목이 누락되었습니다.");
       return;
     }
 
@@ -169,7 +168,7 @@ export default function SaerokWriteScreen() {
         );
         await registerImageMetaApi(newId, objectKey, contentType);
 
-        Alert.alert("완료", "등록이 완료되었습니다!");
+        Alert.alert("완료", "등록이 완료되었습니다.");
         resetForm();
         router.replace("/(tabs)/saerok");
         return;
@@ -209,11 +208,11 @@ export default function SaerokWriteScreen() {
         setImageId(meta.imageId);
       }
 
-      Alert.alert("완료", "수정이 완료되었습니다!");
+      Alert.alert("완료", "수정이 완료되었습니다.");
       resetForm();
       router.replace("/(tabs)/saerok");
     } catch (e: any) {
-      Alert.alert("오류", e?.message ?? "처리 중 오류가 발생했습니다.");
+      Alert.alert("오류", e?.message ?? "수정 중 오류가 발생했습니다.");
     }
   };
 
@@ -234,9 +233,9 @@ export default function SaerokWriteScreen() {
       <View style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={{
-            paddingHorizontal: 16,
-            paddingTop: 12,
-            paddingBottom: 160,
+            paddingHorizontal: rs(16),
+            paddingTop: rs(12),
+            paddingBottom: rs(160),
           }}
           keyboardShouldPersistTaps="handled"
         >
@@ -250,9 +249,9 @@ export default function SaerokWriteScreen() {
           >
             <Text style={styles.selectorLabel}>새</Text>
             <Text style={styles.selectorValue}>
-              {form.birdName ? form.birdName : "새를 선택하세요"}
+              {form.birdName ? form.birdName : "새를 선택해주세요"}
             </Text>
-            <Text style={styles.chev}>›</Text>
+            <Text style={styles.chev}>{">"}</Text>
           </Pressable>
 
           <Pressable
@@ -263,9 +262,9 @@ export default function SaerokWriteScreen() {
             <Text style={styles.selectorValue}>
               {form.locationAlias
                 ? `${form.locationAlias} (${form.address})`
-                : "장소를 선택하세요"}
+                : "장소를 선택해주세요"}
             </Text>
-            <Text style={styles.chev}>›</Text>
+            <Text style={styles.chev}>{">"}</Text>
           </Pressable>
 
           <View style={styles.row}>
@@ -283,11 +282,15 @@ export default function SaerokWriteScreen() {
             <TextInput
               value={form.memo}
               onChangeText={setMemo}
-              placeholder="50자 이내로 입력해주세요"
+              placeholder="50자 이내로 한줄평을 입력해주세요"
               placeholderTextColor="#9CA3AF"
               style={[
                 styles.input,
-                { height: 96, paddingTop: 12, textAlignVertical: "top" },
+                {
+                  height: rs(96),
+                  paddingTop: rs(12),
+                  textAlignVertical: "top",
+                },
               ]}
               maxLength={50}
               multiline
@@ -310,13 +313,13 @@ export default function SaerokWriteScreen() {
             </Pressable>
           </View>
 
-          <View style={{ marginTop: 14 }}>
+          <View style={{ marginTop: rs(14) }}>
             <Pressable style={styles.imageBtn} onPress={pickImage}>
               <Text style={{ color: "#111827", fontWeight: "700" }}>
                 {form.imageFile
                   ? "이미지 변경"
                   : isEdit
-                    ? "이미지 변경(선택)"
+                    ? "이미지 변경"
                     : "이미지 선택"}
               </Text>
             </Pressable>
@@ -363,60 +366,65 @@ export default function SaerokWriteScreen() {
 
 const styles = StyleSheet.create({
   title: {
-    fontSize: 20,
+    fontSize: rfs(20),
     fontWeight: "800",
     color: "#111827",
-    marginBottom: 14,
+    marginBottom: rs(14),
   },
   selector: {
-    height: 56,
-    borderWidth: 1,
+    height: rs(56),
+    borderWidth: rs(1),
     borderColor: "#E5E7EB",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    marginBottom: 10,
+    borderRadius: rs(12),
+    paddingHorizontal: rs(14),
+    marginBottom: rs(10),
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: rs(10),
   },
-  selectorLabel: { width: 52, color: "#6B7280", fontWeight: "700" },
+  selectorLabel: { width: rs(52), color: "#6B7280", fontWeight: "700" },
   selectorValue: { flex: 1, color: "#111827" },
-  chev: { color: "#9CA3AF", fontSize: 22 },
+  chev: { color: "#9CA3AF", fontSize: rfs(22) },
 
-  row: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 10 },
-  rowCol: { marginTop: 10 },
-  label: { width: 52, color: "#6B7280", fontWeight: "700" },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(10),
+    marginTop: rs(10),
+  },
+  rowCol: { marginTop: rs(10) },
+  label: { width: rs(52), color: "#6B7280", fontWeight: "700" },
   input: {
     flex: 1,
-    height: 40,
-    borderWidth: 1,
+    height: rs(40),
+    borderWidth: rs(1),
     borderColor: "#E5E7EB",
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    borderRadius: rs(10),
+    paddingHorizontal: rs(12),
     color: "#111827",
   },
   toggle: {
     flex: 1,
-    height: 40,
-    borderWidth: 1,
+    height: rs(40),
+    borderWidth: rs(1),
     borderColor: "#E5E7EB",
-    borderRadius: 10,
+    borderRadius: rs(10),
     alignItems: "center",
     justifyContent: "center",
   },
   imageBtn: {
-    height: 44,
-    borderRadius: 10,
-    borderWidth: 1,
+    height: rs(44),
+    borderRadius: rs(10),
+    borderWidth: rs(1),
     borderColor: "#2563eb",
     alignItems: "center",
     justifyContent: "center",
   },
   preview: {
-    marginTop: 10,
+    marginTop: rs(10),
     width: "100%",
-    height: 220,
-    borderRadius: 12,
+    height: rs(220),
+    borderRadius: rs(12),
     backgroundColor: "#F3F4F6",
   },
   bottomBar: {
@@ -424,19 +432,19 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 16,
+    paddingHorizontal: rs(16),
+    paddingTop: rs(10),
+    paddingBottom: rs(16),
     backgroundColor: "#fff",
-    borderTopWidth: 1,
+    borderTopWidth: rs(1),
     borderTopColor: "#E5E7EB",
   },
   submit: {
-    height: 52,
-    borderRadius: 12,
+    height: rs(52),
+    borderRadius: rs(12),
     backgroundColor: "#2563eb",
     alignItems: "center",
     justifyContent: "center",
   },
-  submitText: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  submitText: { color: "#fff", fontWeight: "800", fontSize: rfs(16) },
 });

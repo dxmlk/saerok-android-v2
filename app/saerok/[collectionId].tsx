@@ -7,7 +7,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View, Alert } from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, View } from "react-native";
 
 export default function SaerokDetailScreen() {
   const router = useRouter();
@@ -31,7 +31,7 @@ export default function SaerokDetailScreen() {
       try {
         const res = await fetchCollectionDetail(idNum);
         setItem(res);
-      } catch (e) {
+      } catch {
         setItem(null);
       } finally {
         setLoading(false);
@@ -39,15 +39,7 @@ export default function SaerokDetailScreen() {
     })();
   }, [idNum, router]);
 
-  if (loading || !item) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
-
-  if (authLoading) {
+  if (!item) {
     return (
       <View style={styles.center}>
         <ActivityIndicator />
@@ -56,19 +48,39 @@ export default function SaerokDetailScreen() {
   }
 
   const isMine =
-    !!user &&
-    typeof item.user.nickname === "string" &&
-    item.user.nickname === user.nickname;
+    !!user && item.user?.nickname && item.user.nickname === user.nickname;
 
   return (
     <View style={{ flex: 1, backgroundColor: "#F2F2F2" }}>
       <SaerokDetailHeader
-        collectionId={item.collectionId}
         birdId={item.bird?.birdId ?? null}
-        birdName={item.bird?.koreanName ?? null}
+        collectionId={item.collectionId}
         isMine={isMine}
       />
-      <SaerokInfo item={item} isMine={isMine} />
+      {loading || authLoading ? (
+        <View style={styles.center}>
+          <ActivityIndicator />
+        </View>
+      ) : (
+        <SaerokInfo
+          collectionId={item.collectionId}
+          img={item.imageUrl ?? null}
+          date={item.discoveredDate}
+          address={item.address}
+          locationAlias={item.locationAlias}
+          note={item.note}
+          birdInfo={{
+            birdId: item.bird?.birdId ?? null,
+            koreanName: item.bird?.koreanName ?? null,
+            scientificName: item.bird?.scientificName ?? null,
+          }}
+          user={{
+            userId: item.user?.userId,
+            nickname: item.user?.nickname,
+          }}
+          isMine={isMine}
+        />
+      )}
     </View>
   );
 }

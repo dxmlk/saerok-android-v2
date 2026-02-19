@@ -9,6 +9,7 @@ import { Pressable, Text, View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { tabBarHeightAtom } from "@/states/tabBarAtom";
 import { useSetRecoilState } from "recoil";
+import { rfs, rs } from "@/theme";
 
 const ICONS: Record<string, React.FC<any>> = {
   saerok: SaerokIcon,
@@ -36,12 +37,19 @@ export default function FloatingTabBar({
   return (
     <View
       pointerEvents="box-none"
-      style={[styles.wrapper, { bottom: insets.bottom + 12 }]}
+      style={styles.wrapper}
       onLayout={(e) => {
         setTabBarHeight(e.nativeEvent.layout.height);
       }}
     >
-      <View style={styles.bar}>
+      <View
+        style={[
+          styles.bar,
+          {
+            paddingBottom: Math.max(insets.bottom, rs(12)),
+          },
+        ]}
+      >
         {state.routes.map((route, idx) => {
           const isFocused = state.index === idx;
           const name = route.name;
@@ -69,11 +77,11 @@ export default function FloatingTabBar({
               key={route.key}
               onPress={onPress}
               style={[styles.item, !isCenter && styles.itemGap]}
-              hitSlop={10}
+              hitSlop={rs(10)}
             >
               <Icon
-                width={24}
-                height={24}
+                width={rs(24)}
+                height={rs(24)}
                 color={color}
                 stroke={color}
                 fill={isFocused ? color : "none"}
@@ -93,24 +101,19 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    alignItems: "center",
+    bottom: 0,
+    alignItems: "stretch",
   },
   bar: {
+    width: "100%",
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: "#ffffff",
-    borderRadius: 999,
-
-    // iOS shadow
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-
-    // Android shadow
-    elevation: 8,
+    paddingHorizontal: rs(24),
+    paddingTop: rs(12),
+    borderTopWidth: rs(1),
+    borderTopColor: "#F2F2F2",
+    backgroundColor: "#FFFFFF",
   },
   item: {
     flex: 1,
@@ -118,10 +121,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   itemGap: {
-    gap: 4,
+    gap: rs(4),
   },
   label: {
-    fontSize: 11,
+    fontSize: rfs(11),
     fontWeight: "500",
   },
 });

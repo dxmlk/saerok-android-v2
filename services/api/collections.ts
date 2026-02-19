@@ -1,4 +1,5 @@
 import axiosPrivate from "../axiosPrivate";
+import axiosPublic from "../axiosPublic";
 
 export interface CreateCollectionRequest {
   birdId: number | null;
@@ -72,7 +73,6 @@ export interface CollectionItem {
   discoveredDate: string; // YYYY-MM-DD
 }
 
-// 서버 고치면 다시 사용할 코드
 export const fetchMyCollections = async (): Promise<CollectionItem[]> => {
   try {
     const res = await axiosPrivate.get<{ items: CollectionItem[] }>(
@@ -84,39 +84,6 @@ export const fetchMyCollections = async (): Promise<CollectionItem[]> => {
     throw e;
   }
 };
-
-// Mock 데이터 반환
-// export const fetchMyCollections = async (): Promise<CollectionItem[]> => {
-//   if (__DEV__) {
-//     return [
-//       {
-//         collectionId: 1,
-//         imageUrl: "https://example.com/images/collection1.jpg",
-//         thumbnailImageUrl: "https://cdn.example.com/thumbnails/abc.webp",
-//         koreanName: "까치",
-//         likeCount: 15,
-//         commentCount: 7,
-//         createdAt: "2024-03-15T10:30:00",
-//         discoveredDate: "2025-01-15",
-//       },
-//       {
-//         collectionId: 2,
-//         imageUrl: null,
-//         thumbnailImageUrl: null,
-//         koreanName: "이름 모를 새",
-//         likeCount: 0,
-//         commentCount: 0,
-//         createdAt: "2025-01-01T12:00:00",
-//         discoveredDate: "2025-01-01",
-//       },
-//     ];
-//   }
-
-//   const res = await axiosPrivate.get<{ items: CollectionItem[] }>(
-//     "/collections/me",
-//   );
-//   return res.data.items;
-// };
 
 export interface CollectionDetail {
   collectionId: number;
@@ -192,12 +159,25 @@ export interface PatchCollectionRequest {
   accessLevel?: "PUBLIC" | "PRIVATE";
 }
 
+export interface PatchCollectionResponse {
+  collectionId: number;
+  birdId: number | null;
+  discoveredDate: string;
+  longitude: number;
+  latitude: number;
+  address: string;
+  locationAlias: string;
+  note: string;
+  imageUrl: string | null;
+  accessLevel: "PUBLIC" | "PRIVATE";
+}
+
 export const patchCollectionApi = async (
   collectionId: number,
   data: PatchCollectionRequest,
-) => {
+): Promise<PatchCollectionResponse> => {
   try {
-    const res = await axiosPrivate.patch(
+    const res = await axiosPrivate.patch<PatchCollectionResponse>(
       `/collections/${collectionId}/edit`,
       data,
     );
@@ -208,7 +188,9 @@ export const patchCollectionApi = async (
   }
 };
 
-export const deleteCollectionApi = async (collectionId: number) => {
+export const deleteCollectionApi = async (
+  collectionId: number,
+): Promise<void> => {
   try {
     await axiosPrivate.delete(`/collections/${collectionId}`);
   } catch (e) {
@@ -220,7 +202,7 @@ export const deleteCollectionApi = async (collectionId: number) => {
 export const deleteCollectionImageApi = async (
   collectionId: number,
   imageId: number,
-) => {
+): Promise<void> => {
   try {
     await axiosPrivate.delete(`/collections/${collectionId}/images/${imageId}`);
   } catch (e) {
@@ -257,19 +239,175 @@ export const fetchNearbyCollections = async ({
     const res = await axiosPrivate.get<{ items: NearbyCollectionItem[] }>(
       "/collections/nearby",
       {
-        params: {
-          latitude,
-          longitude,
-          radiusMeters,
-          isMineOnly,
-        },
+        params: { latitude, longitude, radiusMeters, isMineOnly },
       },
     );
-
-    console.log("[fetchNearbyCollections] SUCCESS", res.data.items.length);
     return res.data.items;
   } catch (e) {
     console.log("[fetchNearbyCollections] ERROR", e);
+    throw e;
+  }
+};
+
+export const toggleCollectionLikeApi = async (
+  collectionId: number,
+): Promise<boolean> => {
+  try {
+    const res = await axiosPrivate.post(`/collections/${collectionId}/like`);
+    return !!res.data.isLiked;
+  } catch (e) {
+    console.log("[toggleCollectionLikeApi] ERROR", e);
+    throw e;
+  }
+};
+
+export const fetchCollectionLikeListApi = async (
+  collectionId: number,
+): Promise<any[]> => {
+  try {
+    const res = await axiosPublic.get(
+      `/collections/${collectionId}/like/users`,
+    );
+    return res.data.items;
+  } catch (e) {
+    console.log("[fetchCollectionLikeListApi] ERROR", e);
+    throw e;
+  }
+};
+
+export const getCollectionLikeStatusApi = async (
+  collectionId: number,
+): Promise<boolean> => {
+  try {
+    const res = await axiosPrivate.get(
+      `/collections/${collectionId}/like/status`,
+    );
+    return !!res.data.isLiked;
+  } catch (e) {
+    console.log("[getCollectionLikeStatusApi] ERROR", e);
+    throw e;
+  }
+};
+
+export const fetchMyCollectionListApi = async (): Promise<number[]> => {
+  try {
+    const res = await axiosPrivate.get("/collections/liked");
+    return res.data.items;
+  } catch (e) {
+    console.log("[fetchMyCollectionListApi] ERROR", e);
+    throw e;
+  }
+};
+
+export const toggleCollectionCommentLikeApi = async (
+  commentId: number,
+): Promise<boolean> => {
+  try {
+    const res = await axiosPrivate.post(
+      `/collections/comments/${commentId}/like`,
+    );
+    return !!res.data.isLiked;
+  } catch (e) {
+    console.log("[toggleCollectionCommentLikeApi] ERROR", e);
+    throw e;
+  }
+};
+
+export const getCollectionCommentLikeStatusApi = async (
+  commentId: number,
+): Promise<boolean> => {
+  try {
+    const res = await axiosPrivate.get(
+      `/collections/comments/${commentId}/like/status`,
+    );
+    return !!res.data.isLiked;
+  } catch (e) {
+    console.log("[getCollectionCommentLikeStatusApi] ERROR", e);
+    throw e;
+  }
+};
+
+export interface CollectionCommentItem {
+  commentId: number;
+  userId: number;
+  nickname: string;
+  content: string;
+  likeCount: number;
+  isLiked: boolean;
+  isMine: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const fetchCollectionCommentListApi = async (
+  collectionId: number,
+): Promise<CollectionCommentItem[]> => {
+  try {
+    const res = await axiosPrivate.get(`/collections/${collectionId}/comments`);
+    return res.data.items;
+  } catch (e) {
+    console.log("[fetchCollectionCommentListApi] ERROR", e);
+    throw e;
+  }
+};
+
+export const createCollectionCommentApi = async (
+  collectionId: number,
+  content: string,
+): Promise<number> => {
+  try {
+    const res = await axiosPrivate.post(
+      `/collections/${collectionId}/comments`,
+      { content },
+    );
+    return res.data.commentId;
+  } catch (e) {
+    console.log("[createCollectionCommentApi] ERROR", e);
+    throw e;
+  }
+};
+
+export const deleteCollectionCommentApi = async (
+  collectionId: number,
+  commentId: number,
+): Promise<void> => {
+  try {
+    await axiosPrivate.delete(
+      `/collections/${collectionId}/comments/${commentId}`,
+    );
+  } catch (e) {
+    console.log("[deleteCollectionCommentApi] ERROR", e);
+    throw e;
+  }
+};
+
+export const patchCollectionCommentApi = async (
+  collectionId: number,
+  commentId: number,
+  content: string,
+): Promise<string> => {
+  try {
+    const res = await axiosPrivate.patch(
+      `/collections/${collectionId}/comments/${commentId}`,
+      { content },
+    );
+    return res.data.content;
+  } catch (e) {
+    console.log("[patchCollectionCommentApi] ERROR", e);
+    throw e;
+  }
+};
+
+export const getCollectionCommentCountApi = async (
+  collectionId: number,
+): Promise<number> => {
+  try {
+    const res = await axiosPublic.get(
+      `/collections/${collectionId}/comments/count`,
+    );
+    return Number(res.data.count ?? 0);
+  } catch (e) {
+    console.log("[getCollectionCommentCountApi] ERROR", e);
     throw e;
   }
 };

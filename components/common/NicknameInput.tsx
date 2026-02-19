@@ -3,6 +3,7 @@ import { validateNickname } from "@/lib/validateNickname";
 import { checkNicknameAvailable } from "@/services/api/user";
 import React, { FC, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { rfs, rs } from "@/theme";
 
 type Props = {
   nickname: string;
@@ -87,7 +88,7 @@ const NicknameInput: FC<Props> = ({
         {!checked ? (
           <Pressable
             onPress={handleDuplicationCheck}
-            hitSlop={10}
+            hitSlop={rs(10)}
             style={styles.checkBtn}
           >
             <Text style={styles.checkBtnText}>중복 확인</Text>
@@ -118,26 +119,36 @@ export default NicknameInput;
 const styles = StyleSheet.create({
   box: {
     width: "100%",
-    height: 44,
-    borderWidth: 2,
-    borderRadius: 10,
-    paddingHorizontal: 14,
+    height: rs(44),
+    borderWidth: rs(2),
+    borderRadius: rs(10),
+    paddingHorizontal: rs(14),
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
   },
-  input: { flex: 1, height: "100%", fontSize: 14, color: "#111827" },
-  checkBtn: { paddingLeft: 12, paddingVertical: 6 },
-  checkBtnText: { color: "#2563eb", fontWeight: "700", fontSize: 12 },
+  input: { flex: 1, height: "100%", fontSize: rfs(14), color: "#111827" },
+  checkBtn: { paddingLeft: rs(12), paddingVertical: rs(6) },
+  checkBtnText: { color: "#2563eb", fontWeight: "700", fontSize: rfs(12) },
   badge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: rs(18),
+    height: rs(18),
+    borderRadius: rs(9),
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 10,
+    marginLeft: rs(10),
   },
-  badgeText: { color: "#fff", fontSize: 12, fontWeight: "900" },
-  errorText: { marginTop: 6, marginLeft: 6, color: "#EF4444", fontSize: 12 },
-  okText: { marginTop: 6, marginLeft: 6, color: "#0EA5E9", fontSize: 12 },
+  badgeText: { color: "#fff", fontSize: rfs(12), fontWeight: "900" },
+  errorText: {
+    marginTop: rs(6),
+    marginLeft: rs(6),
+    color: "#EF4444",
+    fontSize: rfs(12),
+  },
+  okText: {
+    marginTop: rs(6),
+    marginLeft: rs(6),
+    color: "#0EA5E9",
+    fontSize: rfs(12),
+  },
 });
