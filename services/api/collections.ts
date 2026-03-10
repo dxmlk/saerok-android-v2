@@ -89,6 +89,7 @@ export interface CollectionDetail {
   collectionId: number;
   imageUrl: string | null;
   discoveredDate: string;
+  createdAt: string;
   latitude: number;
   longitude: number;
   locationAlias: string;
@@ -103,6 +104,8 @@ export interface CollectionDetail {
   user: {
     userId: number;
     nickname: string;
+    profileImageUrl?: string | null;
+    thumbnailProfileImageUrl?: string | null;
   };
 }
 
@@ -214,12 +217,24 @@ export const deleteCollectionImageApi = async (
 export interface NearbyCollectionItem {
   collectionId: number;
   imageUrl: string | null;
+  thumbnailImageUrl?: string | null;
   koreanName: string | null;
   note: string;
+  createdAt?: string;
+  discoveredDate?: string;
+  likeCount?: number;
+  commentCount?: number;
+  isLiked?: boolean;
   latitude: number;
   longitude: number;
   locationAlias: string;
   address: string;
+  user?: {
+    userId: number;
+    nickname: string;
+    profileImageUrl?: string | null;
+    thumbnailProfileImageUrl?: string | null;
+  };
 }
 
 export interface FetchNearbyCollectionsParams {
@@ -261,9 +276,16 @@ export const toggleCollectionLikeApi = async (
   }
 };
 
+export interface CollectionLikeUser {
+  userId: number;
+  nickname: string;
+  profileImageUrl?: string | null;
+  thumbnailProfileImageUrl?: string | null;
+}
+
 export const fetchCollectionLikeListApi = async (
   collectionId: number,
-): Promise<any[]> => {
+): Promise<CollectionLikeUser[]> => {
   try {
     const res = await axiosPublic.get(
       `/collections/${collectionId}/like/users`,

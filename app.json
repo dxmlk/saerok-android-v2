@@ -36,6 +36,12 @@
         }
       ],
       [
+        "@mj-studio/react-native-naver-map",
+        {
+          "client_id": "${EXPO_PUBLIC_NAVER_MAP_CLIENT_ID}"
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {
@@ -44,7 +50,8 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-font"
+      "expo-font",
+      "expo-notifications"
     ],
     "extra": {
       "router": {},

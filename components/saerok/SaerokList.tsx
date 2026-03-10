@@ -93,113 +93,116 @@ export default function SaerokList({
 
   if (!isLoggedIn) {
     return (
-      <View style={styles.loginWrap}>
-        <Text style={styles.loginUpper}>로그인이 필요한 서비스예요</Text>
-        <Text style={styles.loginLower}>
-          로그인하고 탐조 기록을 시작해보세요!
-        </Text>
+      <View style={styles.screenBg}>
+        <View style={styles.loginWrap}>
+          <Text style={styles.loginUpper}>로그인이 필요한 서비스예요.</Text>
+          <Text style={styles.loginLower}>
+            로그인하고 탐조 기록을 시작해보세요!
+          </Text>
 
-        <View style={styles.loginBtnRow}>
-          <Pressable
-            style={styles.loginBtn}
-            onPress={() => router.push("/login")}
-          >
-            <LoginIcon width={rs(24)} height={rs(24)} stroke="#FFFFFF" />
-            <Text style={styles.loginBtnText}>로그인 / 회원가입</Text>
-          </Pressable>
+          <View style={styles.loginBtnRow}>
+            <Pressable
+              style={styles.loginBtn}
+              onPress={() => router.push("/login")}
+            >
+              <LoginIcon width={rs(24)} height={rs(24)} stroke="#FFFFFF" />
+              <Text style={styles.loginBtnText}>로그인 / 회원가입</Text>
+            </Pressable>
+          </View>
         </View>
-      </View>
-    );
-  }
-
-  if (loading) {
-    return (
-      <View style={{ paddingVertical: rs(24) }}>
-        <ActivityIndicator />
-      </View>
-    );
-  }
-
-  if (!items.length) {
-    return (
-      <View style={{ paddingHorizontal: rs(24), paddingVertical: rs(16) }}>
-        <EmptyState
-          bgColor="white"
-          upperText="아직 발견한 새가 없어요!"
-          lowerText="오른쪽 깃털 버튼을 눌러 탐조 기록을 시작해보세요."
-        />
       </View>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.scrollContent}>
-      <View style={styles.masonryRow}>
-        <View style={styles.col}>
-          {leftItems.map((item) => {
-            const ratio = ratioRef.current[item.collectionId];
-            return (
-              <Pressable
-                key={item.collectionId}
-                onPress={() =>
-                  router.push({
-                    pathname: "/saerok/[collectionId]",
-                    params: { collectionId: String(item.collectionId) },
-                  })
-                }
-                style={styles.card}
-              >
-                <Image
-                  source={{ uri: item.imageUrl ?? "" }}
-                  resizeMode="cover"
-                  style={[
-                    styles.imgBase,
-                    ratio ? { aspectRatio: ratio } : styles.imgFallbackSquare,
-                  ]}
-                />
-                <Text numberOfLines={1} style={styles.caption}>
-                  {item.koreanName ?? "이름 모를 새"}
-                </Text>
-              </Pressable>
-            );
-          })}
+    <View style={styles.screenBg}>
+      {loading ? (
+        <View style={{ paddingVertical: rs(24) }}>
+          <ActivityIndicator />
         </View>
+      ) : !items.length ? (
+        <View style={{ paddingHorizontal: rs(24), paddingVertical: rs(16) }}>
+          <EmptyState
+            bgColor="white"
+            upperText="아직 발견한 새가 없어요!"
+            lowerText="오른쪽 깃털 버튼을 눌러 탐조 기록을 시작해보세요."
+          />
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <View style={styles.masonryRow}>
+            <View style={styles.col}>
+              {leftItems.map((item) => (
+                <Pressable
+                  key={item.collectionId}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/saerok/[collectionId]",
+                      params: { collectionId: String(item.collectionId) },
+                    })
+                  }
+                  style={styles.card}
+                >
+                  <Image
+                    source={{ uri: item.imageUrl ?? "" }}
+                    resizeMode="cover"
+                    style={[
+                      styles.imgBase,
+                      ratioRef.current[item.collectionId]
+                        ? { aspectRatio: ratioRef.current[item.collectionId] }
+                        : styles.imgFallbackSquare,
+                    ]}
+                  />
+                  <Text numberOfLines={1} style={styles.caption}>
+                    {item.koreanName ?? "이름 모를 새"}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
 
-        <View style={styles.col}>
-          {rightItems.map((item) => {
-            const ratio = ratioRef.current[item.collectionId];
-            return (
-              <Pressable
-                key={item.collectionId}
-                onPress={() =>
-                  router.push({
-                    pathname: "/saerok/[collectionId]",
-                    params: { collectionId: String(item.collectionId) },
-                  })
-                }
-                style={styles.card}
-              >
-                <Image
-                  source={{ uri: item.imageUrl ?? "" }}
-                  resizeMode="cover"
-                  style={[
-                    styles.imgBase,
-                    ratio ? { aspectRatio: ratio } : styles.imgFallbackSquare,
-                  ]}
-                />
-                <Text numberOfLines={1} style={styles.caption}>
-                  {item.koreanName ?? "이름 모를 새"}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-      </View>
-    </ScrollView>
+            <View style={styles.col}>
+              {rightItems.map((item) => (
+                <Pressable
+                  key={item.collectionId}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/saerok/[collectionId]",
+                      params: { collectionId: String(item.collectionId) },
+                    })
+                  }
+                  style={styles.card}
+                >
+                  <Image
+                    source={{ uri: item.imageUrl ?? "" }}
+                    resizeMode="cover"
+                    style={[
+                      styles.imgBase,
+                      ratioRef.current[item.collectionId]
+                        ? { aspectRatio: ratioRef.current[item.collectionId] }
+                        : styles.imgFallbackSquare,
+                    ]}
+                  />
+                  <Text numberOfLines={1} style={styles.caption}>
+                    {item.koreanName ?? "이름 모를 새"}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screenBg: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
   loginWrap: {
     marginTop: rs(10),
     paddingHorizontal: rs(24),
@@ -240,36 +243,60 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
   },
 
+  scrollView: {
+    flex: 1,
+  },
   scrollContent: {
+    flexGrow: 1,
     paddingBottom: rs(24),
+    backgroundColor: "transparent",
   },
   masonryRow: {
-    marginTop: rs(12),
+    marginTop: rs(10),
+    paddingHorizontal: rs(9),
     flexDirection: "row",
-    gap: rs(9),
+    gap: rs(7),
     justifyContent: "center",
   },
   col: {
     flex: 1,
     flexDirection: "column",
-    gap: rs(12),
+    gap: rs(9),
+    alignItems: "stretch",
   },
 
   card: {
     width: "100%",
+    paddingTop: rs(5),
+    paddingBottom: rs(8),
+    paddingHorizontal: rs(5),
+    alignItems: "center",
+    gap: rs(10),
+    borderRadius: rs(20),
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000000",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 10,
   },
   imgBase: {
     width: "100%",
-    borderRadius: rs(10),
+    borderTopLeftRadius: rs(15),
+    borderTopRightRadius: rs(15),
+    borderBottomLeftRadius: rs(5),
+    borderBottomRightRadius: rs(5),
     backgroundColor: "#F3F4F6",
   },
   imgFallbackSquare: {
     aspectRatio: 1,
   },
   caption: {
-    marginTop: rs(8),
-    fontFamily: font.regular,
-    fontSize: rfs(12),
-    color: "#111827",
+    fontFamily: font.money,
+    fontSize: rfs(13),
+    lineHeight: rfs(14),
+    color: "#000000",
+    alignSelf: "flex-start",
+    marginLeft: rs(7),
   },
 });

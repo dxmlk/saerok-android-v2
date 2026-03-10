@@ -25,6 +25,13 @@ export type DexItem = {
   thumbImageUrl: string;
 };
 
+type DexListRowItem =
+  | DexItem
+  | {
+      id: string;
+      __placeholder: true;
+    };
+
 type Props = {
   items: DexItem[];
   loading?: boolean;
@@ -40,8 +47,8 @@ type Props = {
 };
 
 const AnimatedFlatList = Animated.createAnimatedComponent(
-  FlatList<DexItem>,
-) as unknown as typeof FlatList<DexItem>;
+  FlatList<DexListRowItem>,
+) as unknown as typeof FlatList<DexListRowItem>;
 
 export default function DexList({
   items,
@@ -56,8 +63,15 @@ export default function DexList({
   contentTopPadding = 0,
 }: Props) {
   const router = useRouter();
+  const listData: DexListRowItem[] =
+    items.length % 2 === 1
+      ? [...items, { id: "__dex-placeholder__", __placeholder: true }]
+      : items;
 
-  const renderItem = ({ item }: { item: DexItem }) => {
+  const renderItem = ({ item }: { item: DexListRowItem }) => {
+    if ("__placeholder" in item) {
+      return <View style={[styles.card, styles.placeholderCard]} />;
+    }
     const isBookmarked = bookmarkedIds.has(item.id);
 
     return (
@@ -82,9 +96,11 @@ export default function DexList({
           style={styles.scrapBtn}
         >
           <ScrapIcon
-            width={rs(18)}
-            height={rs(18)}
-            color={isBookmarked ? "#F6C343" : "#6B7280"}
+            width={rs(23)}
+            height={rs(29)}
+            fill={isBookmarked ? "#F7BE65" : "rgba(217, 217, 217, 0.60)"}
+            stroke={isBookmarked ? "#FEFEFE" : "#6D6D6D"}
+            strokeWidth={1.5}
           />
         </Pressable>
 
@@ -114,7 +130,7 @@ export default function DexList({
   return (
     <AnimatedFlatList
       ref={listRef as any}
-      data={items}
+      data={listData}
       keyExtractor={(it) => String(it.id)}
       numColumns={2}
       columnWrapperStyle={styles.row}
@@ -145,9 +161,9 @@ export default function DexList({
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: rs(10), // 由ъ뒪???먯껜 湲곕낯 ?щ갚
+    paddingTop: rs(40),
     paddingHorizontal: rs(9),
-    paddingBottom: rs(24),
+    paddingBottom: rs(100),
   },
   row: {
     gap: rs(7),
@@ -165,6 +181,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: rs(0), height: rs(0) },
     elevation: 2,
   },
+  placeholderCard: {
+    opacity: 0,
+  },
 
   img: {
     position: "absolute",
@@ -178,12 +197,12 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: rs(12),
     right: rs(12),
-    width: rs(17),
-    height: rs(25),
+    width: rs(23),
+    height: rs(29),
     alignItems: "center",
     justifyContent: "center",
     zIndex: 20,
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.5,
     shadowRadius: rs(3),
     shadowOffset: { width: rs(0), height: rs(1) },
     elevation: 3,

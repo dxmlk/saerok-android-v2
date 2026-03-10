@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
   },
 
   topRow: {
-    marginTop: rs(40),
+    marginTop: rs(31),
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   count: {
     fontSize: rfs(36),
     fontWeight: "800",
-    color: "#2563EB",
+    color: "#4190FF",
   },
   desc: {
     marginTop: rs(2),

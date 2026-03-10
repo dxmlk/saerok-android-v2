@@ -34,24 +34,28 @@ export default function EmptyState({ bgColor, upperText, lowerText }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    marginTop: rs(28),
-    paddingHorizontal: rs(24),
-    paddingBottom: rs(28),
+    flex: 1,
+    marginTop: rs(32),
+    alignItems: "center",
+    justifyContent: "center",
   },
   upper: {
     fontFamily: font.haru,
     fontSize: rfs(20),
     color: "#111827",
+    textAlign: "center",
   },
   lower: {
     marginTop: rs(5),
     fontFamily: font.regular,
     fontSize: rfs(15),
+    fontWeight: "400",
     lineHeight: rfs(18),
     color: "#6B7280",
+    textAlign: "center",
   },
   imgRow: {
-    marginTop: rs(60),
+    marginTop: rs(32),
     alignItems: "center",
     justifyContent: "center",
   },

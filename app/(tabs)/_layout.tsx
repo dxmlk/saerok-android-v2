@@ -5,7 +5,7 @@ import FloatingTabBar from "../../components/FloatingTabBar";
 export default function TabLayout() {
   return (
     <Tabs
-      screenOptions={{ headerShown: false }}
+      screenOptions={{ headerShown: false, unmountOnBlur: true }}
       tabBar={(props) => <FloatingTabBar {...props} />}
     >
       <Tabs.Screen name="saerok" options={{ title: "새록" }} />

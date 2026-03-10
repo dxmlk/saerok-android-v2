@@ -15,6 +15,7 @@ import {
 } from "../lib/tokenStore";
 import { getUserInfo } from "../services/api/user";
 import { onAuthExpired } from "../services/authEvents";
+import { registerPushTokenToServer } from "@/services/notifications/push";
 
 export interface User {
   nickname: string;
@@ -64,6 +65,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshUser();
   }, [refreshUser]);
+
+  useEffect(() => {
+    if (!user) return;
+    registerPushTokenToServer().catch((e) => {
+      console.log("[AuthProvider] registerPushTokenToServer ERROR", e);
+    });
+  }, [user]);
 
   useEffect(() => {
     const off = onAuthExpired(async () => {

@@ -1,34 +1,23 @@
-import React, { useMemo, useState } from "react";
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+﻿import React, { useMemo, useState } from "react";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { rfs, rs } from "@/theme";
 
 type Props = {
   placeholder?: string;
   onSubmit: (value: string) => Promise<void> | void;
-  onClose?: () => void;
 };
 
 export default function CommentInputBar({
-  placeholder = "댓글을 남겨보세요",
+  placeholder = "댓글 남기기",
   onSubmit,
-  onClose,
 }: Props) {
   const [value, setValue] = useState("");
-
   const isActive = useMemo(() => value.trim().length > 0, [value]);
 
   const handleSend = async () => {
     const v = value.trim();
     if (!v) return;
-
     try {
       await onSubmit(v);
       setValue("");
@@ -36,17 +25,13 @@ export default function CommentInputBar({
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-      style={styles.wrap}
-    >
+    <View style={styles.wrap}>
       <View style={styles.bar}>
         <TextInput
           value={value}
           onChangeText={setValue}
           placeholder={placeholder}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor="#979797"
           style={styles.input}
           returnKeyType="send"
           onSubmitEditing={handleSend}
@@ -59,27 +44,17 @@ export default function CommentInputBar({
           accessibilityRole="button"
           accessibilityLabel="댓글 전송"
         >
-          <Text
-            style={[
-              styles.sendText,
-              isActive ? styles.sendTextOn : styles.sendTextOff,
-            ]}
-          >
-            ↑
-          </Text>
+          <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+            <Path
+              d="M11.9999 3V21M11.9999 3L3 11.6071M11.9999 3L21 11.6071"
+              stroke="#FEFEFE"
+              strokeWidth={2}
+              strokeLinecap="round"
+            />
+          </Svg>
         </Pressable>
       </View>
-
-      {onClose ? (
-        <Pressable
-          onPress={onClose}
-          style={styles.closeBtn}
-          accessibilityRole="button"
-        >
-          <Text style={styles.closeText}>닫기</Text>
-        </Pressable>
-      ) : null}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -88,27 +63,28 @@ const styles = StyleSheet.create({
     width: "100%",
     paddingTop: rs(19),
     paddingHorizontal: rs(9),
-    paddingBottom: rs(44),
+    paddingBottom: 0,
     borderTopWidth: rs(1),
-    borderTopColor: "#E5E7EB",
+    borderTopColor: "#DAE0DE",
     backgroundColor: "#FFFFFF",
   },
   bar: {
     width: "100%",
     borderRadius: rs(23),
-    backgroundColor: "#F3F4F6",
+    backgroundColor: "#F2F2F2",
     flexDirection: "row",
     alignItems: "center",
     gap: rs(8),
-    paddingLeft: rs(24),
+    paddingLeft: rs(16),
     paddingRight: rs(5),
     paddingVertical: rs(5),
   },
   input: {
     flex: 1,
-    fontSize: rfs(14),
-    color: "#111827",
+    fontSize: rfs(15),
+    color: "#0D0D0D",
     paddingVertical: rs(8),
+    lineHeight: rfs(18),
   },
   sendBtn: {
     width: rs(40),
@@ -117,32 +93,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  sendOn: {
-    backgroundColor: "#DBEAFE",
-  },
-  sendOff: {
-    backgroundColor: "#E5E7EB",
-  },
-  sendText: {
-    fontSize: rfs(18),
-    fontWeight: "900",
-  },
-  sendTextOn: {
-    color: "#2563EB",
-  },
-  sendTextOff: {
-    color: "#9CA3AF",
-  },
-  closeBtn: {
-    marginTop: rs(10),
-    alignSelf: "flex-end",
-    paddingHorizontal: rs(12),
-    paddingVertical: rs(8),
-    borderRadius: rs(10),
-    backgroundColor: "#F3F4F6",
-  },
-  closeText: {
-    color: "#111827",
-    fontWeight: "800",
-  },
+  sendOn: { backgroundColor: "#4190FF" },
+  sendOff: { backgroundColor: "#D3D8D6" },
 });

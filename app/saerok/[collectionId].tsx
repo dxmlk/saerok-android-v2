@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SaerokDetailScreen() {
   const router = useRouter();
@@ -51,11 +52,16 @@ export default function SaerokDetailScreen() {
     !!user && item.user?.nickname && item.user.nickname === user.nickname;
 
   return (
-    <View style={{ flex: 1, backgroundColor: "#F2F2F2" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#F2F2F2" }} edges={["top"]}>
       <SaerokDetailHeader
         birdId={item.bird?.birdId ?? null}
         collectionId={item.collectionId}
         isMine={isMine}
+        user={{
+          userId: item.user?.userId,
+          nickname: item.user?.nickname,
+          thumbnailProfileImageUrl: item.user?.thumbnailProfileImageUrl ?? null,
+        }}
       />
       {loading || authLoading ? (
         <View style={styles.center}>
@@ -66,6 +72,8 @@ export default function SaerokDetailScreen() {
           collectionId={item.collectionId}
           img={item.imageUrl ?? null}
           date={item.discoveredDate}
+          createdAt={item.createdAt}
+          accessLevel={item.accessLevel}
           address={item.address}
           locationAlias={item.locationAlias}
           note={item.note}
@@ -81,7 +89,7 @@ export default function SaerokDetailScreen() {
           isMine={isMine}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 

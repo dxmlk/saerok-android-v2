@@ -4,6 +4,7 @@ import MyIcon from "@/assets/icon/nav/MyIcon";
 import SaerokIcon from "@/assets/icon/nav/SaerokIcon";
 import NestIcon from "@/assets/icon/nav/NestIcon";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { useRouter } from "expo-router";
 import React from "react";
 import { Pressable, Text, View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -31,6 +32,7 @@ export default function FloatingTabBar({
   state,
   navigation,
 }: BottomTabBarProps) {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const setTabBarHeight = useSetRecoilState(tabBarHeightAtom);
 
@@ -62,9 +64,9 @@ export default function FloatingTabBar({
               canPreventDefault: true,
             });
 
-            if (!isFocused && !event.defaultPrevented) {
-              navigation.navigate(route.name);
-            }
+            if (event.defaultPrevented) return;
+            router.replace(`/(tabs)/${route.name}` as any);
+
           };
 
           const Icon = ICONS[name];

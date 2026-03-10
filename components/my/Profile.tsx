@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   },
 
   nameLine: {
-    marginTop: rs(1),
+    marginTop: rs(1.5),
     fontSize: rfs(22),
     fontWeight: "400",
     color: "#0D0D0D",

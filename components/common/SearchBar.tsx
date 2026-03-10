@@ -1,6 +1,9 @@
-import React, { forwardRef } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+﻿import React, { forwardRef, useState } from "react";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { rfs, rs } from "../../theme";
+import BackSmallIcon from "@/assets/icon/button/BackSmallIcon";
+import SearchSmallIcon from "@/assets/icon/button/SearchSmallIcon";
+import DeleteSmallIcon from "@/assets/icon/button/DeleteSmallIcon";
 
 type Props = {
   value: string;
@@ -11,6 +14,8 @@ type Props = {
   onBlur?: () => void;
   onBack?: () => void;
   onClear?: () => void;
+  hideLeftIcon?: boolean;
+  editable?: boolean;
 };
 
 const SearchBar = forwardRef<TextInput, Props>(
@@ -24,19 +29,31 @@ const SearchBar = forwardRef<TextInput, Props>(
       onBlur,
       onBack,
       onClear,
+      hideLeftIcon,
+      editable = true,
     },
     ref,
   ) => {
+    const [focused, setFocused] = useState(false);
+
+    const showBack = !!onBack || focused;
+
     return (
       <View style={styles.wrap}>
         <View style={styles.box}>
-          {onBack ? (
-            <Pressable onPress={onBack} hitSlop={rs(10)} style={styles.leftIcon}>
-              <Text style={styles.leftText}>←</Text>
+          {hideLeftIcon ? (
+            <View style={styles.leftIcon} />
+          ) : showBack ? (
+            <Pressable
+              onPress={onBack}
+              hitSlop={rs(10)}
+              style={styles.leftIcon}
+            >
+              <BackSmallIcon width={rs(17)} height={rs(17)} color="#91BFFF" />
             </Pressable>
           ) : (
             <View style={styles.leftIcon}>
-              <Text style={[styles.leftText, { opacity: 0.45 }]}>🔍</Text>
+              <SearchSmallIcon width={rs(22)} height={rs(22)} color="#D1D5DB" />
             </View>
           )}
 
@@ -49,13 +66,28 @@ const SearchBar = forwardRef<TextInput, Props>(
             style={styles.input}
             returnKeyType="search"
             onSubmitEditing={onSubmit}
-            onFocus={onFocus}
-            onBlur={onBlur}
+            onFocus={() => {
+              setFocused(true);
+              onFocus?.();
+            }}
+            onBlur={() => {
+              setFocused(false);
+              onBlur?.();
+            }}
+            editable={editable}
           />
 
-          <Pressable onPress={onClear} hitSlop={rs(10)} style={styles.rightIcon}>
-            <Text style={[styles.leftText, { opacity: 0.6 }]}>✕</Text>
-          </Pressable>
+          {value.length > 0 ? (
+            <Pressable
+              onPress={onClear}
+              hitSlop={rs(10)}
+              style={styles.rightIcon}
+            >
+              <DeleteSmallIcon width={rs(15)} height={rs(15)} color="#979797" />
+            </Pressable>
+          ) : (
+            <View style={styles.rightIcon} />
+          )}
         </View>
       </View>
     );
@@ -77,6 +109,5 @@ const styles = StyleSheet.create({
   },
   leftIcon: { width: rs(40), alignItems: "center", justifyContent: "center" },
   rightIcon: { width: rs(40), alignItems: "center", justifyContent: "center" },
-  leftText: { fontSize: rfs(16), color: "#2563eb" },
-  input: { flex: 1, fontSize: rfs(14), color: "#111827" },
+  input: { flex: 1, fontSize: rfs(15), lineHeight: rfs(18), color: "#111827" },
 });

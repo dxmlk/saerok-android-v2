@@ -119,7 +119,7 @@ export default function DexSearchScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
-      <View style={{ paddingHorizontal: rs(16), paddingTop: rs(12) }}>
+      <View style={{ paddingHorizontal: rs(24), paddingTop: rs(20) }}>
         <SearchBar
           ref={inputRef}
           value={searchTerm}
@@ -145,7 +145,7 @@ export default function DexSearchScreen() {
           />
         )}
 
-        <View style={{ marginTop: rs(10) }}>
+        <View style={{ marginLeft: rs(-16) }}>
           <FilterHeader
             selectedFilters={selectedFilters}
             onFilterChange={(group, vals) =>

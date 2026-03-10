@@ -1,7 +1,8 @@
 import React from "react";
-import { Pressable, Text, ViewStyle } from "react-native";
+import { Pressable, ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { rfs, rs } from "@/theme";
+import { rs } from "@/theme";
+import ScrollTopChevronIcon from "@/assets/icon/common/ScrollTopChevronIcon";
 
 type Props = {
   visible: boolean;
@@ -15,10 +16,10 @@ export default function ScrollToTopButton({ visible, onPress }: Props) {
 
   const style: ViewStyle = {
     position: "absolute",
-    right: rs(16),
-    bottom: insets.bottom + rs(120),
-    width: rs(44),
-    height: rs(44),
+    right: rs(24),
+    bottom: insets.bottom + rs(92),
+    width: rs(40),
+    height: rs(40),
     borderRadius: rs(999),
     backgroundColor: "rgba(255,255,255,0.85)",
     alignItems: "center",
@@ -28,7 +29,7 @@ export default function ScrollToTopButton({ visible, onPress }: Props) {
 
   return (
     <Pressable onPress={onPress} style={style}>
-      <Text style={{ fontSize: rfs(18) }}>↑</Text>
+      <ScrollTopChevronIcon width={rs(18)} height={rs(18)} color="#0D0D0D" />
     </Pressable>
   );
 }

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import {
   createCollectionCommentApi,
@@ -6,17 +6,24 @@ import {
   fetchCollectionCommentListApi,
   getCollectionCommentCountApi,
 } from "@/services/api/collections";
-import CommentModal, {
-  CommentBoxProps,
-} from "@/components/saerok/CommentModal";
-import CommentInputBar from "@/components/saerok/CommentInputBar";
+import CommentModal, { CommentBoxProps } from "@/components/saerok/CommentModal";
 import { rfs, rs } from "@/theme";
+import CommentIcon from "@/assets/icon/saerok/CommentIcon";
 
 type Props = {
   collectionId: number;
+  authorNickname?: string | null;
 };
 
-export default function CollectionCommentButton({ collectionId }: Props) {
+const KOR = {
+  commentToAuthorSuffix: "\uB2D8\uC5D0\uAC8C \uB313\uAE00 \uB0A8\uAE30\uAE30",
+  commentPlaceholder: "\uB313\uAE00 \uB0A8\uAE30\uAE30",
+} as const;
+
+export default function CollectionCommentButton({
+  collectionId,
+  authorNickname,
+}: Props) {
   const commentCount = useRef(0);
   const [commentList, setCommentList] = useState<CommentBoxProps[]>([]);
   const [open, setOpen] = useState(false);
@@ -27,7 +34,7 @@ export default function CollectionCommentButton({ collectionId }: Props) {
 
     try {
       const items = await fetchCollectionCommentListApi(collectionId);
-      setCommentList(items as any);
+      setCommentList(items as CommentBoxProps[]);
     } catch {}
 
     try {
@@ -62,10 +69,12 @@ export default function CollectionCommentButton({ collectionId }: Props) {
         onPress={() => setOpen(true)}
         style={styles.btn}
         accessibilityRole="button"
-        accessibilityLabel="댓글 보기"
+        accessibilityLabel="\uB313\uAE00 \uBCF4\uAE30"
       >
         <View style={styles.row}>
-          <Text style={styles.icon}>💬</Text>
+          <View style={styles.iconWrap}>
+            <CommentIcon width={rs(20)} height={rs(20)} color="#0D0D0D" />
+          </View>
           <Text style={styles.count}>{commentCount.current}</Text>
         </View>
       </Pressable>
@@ -76,17 +85,13 @@ export default function CollectionCommentButton({ collectionId }: Props) {
         items={commentList}
         onDelete={handleDelete}
         headerCount={commentCount.current}
+        onSubmit={handleSubmit}
+        inputPlaceholder={
+          authorNickname
+            ? `${authorNickname}${KOR.commentToAuthorSuffix}`
+            : KOR.commentPlaceholder
+        }
       />
-
-      {open ? (
-        <View style={styles.inputDock}>
-          <CommentInputBar
-            placeholder="댓글을 남겨보세요"
-            onSubmit={handleSubmit}
-            onClose={() => setOpen(false)}
-          />
-        </View>
-      ) : null}
     </>
   );
 }
@@ -103,21 +108,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
-  icon: {
-    fontSize: rfs(18),
-    fontWeight: "900",
-    color: "#111827",
+  iconWrap: {
+    width: rs(40),
+    height: rs(40),
+    alignItems: "center",
+    justifyContent: "center",
   },
   count: {
-    color: "#111827",
-    fontSize: rfs(14),
-    fontWeight: "800",
-  },
-  inputDock: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 999,
+    color: "#0D0D0D",
+    fontSize: rfs(18),
+    fontWeight: "400",
+    lineHeight: rfs(22),
   },
 });

@@ -1,19 +1,12 @@
-// app/(tabs)/dex/index.tsx
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  Text,
-  View,
-  StyleSheet,
-} from "react-native";
+import { FlatList, Pressable, Text, View, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Animated } from "react-native";
 import { NativeSyntheticEvent, NativeScrollEvent } from "react-native";
 
 import ScrollToTopButton from "@/components/common/ScrollToTopButton";
+import FootprintsLoading from "@/components/common/FootprintsLoading";
 import DexList, { DexItem } from "@/components/dex/DexList";
 import DexMainHeader from "@/components/dex/DexMainHeader";
 import EmptyState from "@/components/dex/EmptyState";
@@ -29,23 +22,23 @@ import {
 import { rs } from "@/theme";
 
 const seasonMap: Record<string, string> = {
-  SPRING: "봄",
-  SUMMER: "여름",
-  AUTUMN: "가을",
-  WINTER: "겨울",
+  봄: "spring",
+  여름: "summer",
+  가을: "autumn",
+  겨울: "winter",
 };
 const habitatMap: Record<string, string> = {
-  MUDFLAT: "갯벌",
-  FARMLAND: "경작지/들판",
-  FOREST: "산림/계곡",
-  MARINE: "해양",
-  RESIDENTAIL: "거주지역",
-  PLAINS_FOREST: "평지숲",
-  RIVER_LAKE: "하천/호수",
-  ARTIFICIAL: "인공시설",
-  CAVE: "동굴",
-  WETLAND: "습지",
-  OTHERS: "기타",
+  갯벌: "mudflat",
+  "경작지/들판": "farmland",
+  "산림/계꼭": "forest",
+  해양: "marine",
+  거주지역: "residential",
+  평지숲: "plains_forest",
+  "하천/호수": "river_lake",
+  인공시설: "artificial",
+  동굴: "cave",
+  습지: "wetland",
+  기타: "others",
 };
 const sizeCategoryMap: Record<string, string> = {
   참새: "xsmall",
@@ -55,6 +48,7 @@ const sizeCategoryMap: Record<string, string> = {
 };
 
 const PAGE_SIZE = 20;
+const DEBUG_FORCE_BOOKMARK_LOADING = false;
 
 export default function DexIndex() {
   const router = useRouter();
@@ -158,7 +152,7 @@ export default function DexIndex() {
 
       setHasMore(birds.length === PAGE_SIZE);
     } catch (e: any) {
-      setError(e?.message ?? "도감 데이터를 불러오는 데 실패했습니다.");
+      setError(e?.message ?? "도감을 불러오는 데 실패하였습니다.");
     } finally {
       setLoading(false);
     }
@@ -331,28 +325,37 @@ export default function DexIndex() {
               alignSelf: "flex-start",
             }}
           >
-            <Text>다시 불러오기</Text>
+            <Text>다시 불러오기 </Text>
           </Pressable>
         </View>
       )}
 
       {bookmarkOnly ? (
-        bookmarkLoading ? (
+        bookmarkLoading || DEBUG_FORCE_BOOKMARK_LOADING ? (
           <View
-            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
+            style={{
+              flex: 1,
+              alignItems: "center",
+              paddingTop: COLLAPSE_H + rs(30),
+            }}
           >
-            <ActivityIndicator />
-            <Text style={{ marginTop: rs(10), color: "#666" }}>
-              즐겨찾기 데이터를 불러오는 중입니다...
-            </Text>
+            <FootprintsLoading scale={0.8} />
           </View>
         ) : bookmarkItems.length === 0 ? (
-          <EmptyState
-            bgColor="gray"
-            topInset={COLLAPSE_H}
-            upperText="스크랩한 새가 없어요!"
-            lowerText="새 카드 오른쪽 위 스크랩 버튼을 눌러 스크랩해보세요."
-          />
+          <View
+            style={{
+              flex: 1,
+              alignItems: "center",
+              marginTop: rs(27),
+            }}
+          >
+            <EmptyState
+              bgColor="gray"
+              topInset={COLLAPSE_H}
+              upperText="스크랩한 새가 없어요!"
+              lowerText="새 카드 오른쪽 위 스크랩 버튼을 눌러 스크랩해보세요."
+            />
+          </View>
         ) : (
           <DexList
             items={bookmarkItems}
@@ -375,12 +378,15 @@ export default function DexIndex() {
           />
         )
       ) : items.length === 0 && !loading ? (
-        <EmptyState
-          bgColor="gray"
-          topInset={COLLAPSE_H}
-          upperText="해당하는 새가 없어요!"
-          lowerText="필터를 바꾸거나 새로고침을 해보세요."
-        />
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            paddingTop: COLLAPSE_H + rs(30),
+          }}
+        >
+          <FootprintsLoading scale={0.8} />
+        </View>
       ) : (
         <DexList
           items={items}

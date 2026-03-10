@@ -1,84 +1,66 @@
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import React from "react";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { rfs, rs } from "@/theme";
+import BackButtonIcon from "@/assets/icon/button/BackButtonIcon";
+import { BlurView } from "expo-blur";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export type SaerokDetailHeaderProps = {
   birdId: number | null;
   collectionId: number;
   isMine: boolean;
+  user?: {
+    userId?: number;
+    nickname?: string | null;
+    thumbnailProfileImageUrl?: string | null;
+  } | null;
 };
 
 export default function SaerokDetailHeader({
   birdId,
   collectionId,
   isMine,
+  user,
 }: SaerokDetailHeaderProps) {
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const onBack = () => router.back();
-
-  const goDex = () => {
-    if (!birdId) return;
+  const onProfile = () => {
+    if (!user?.userId) return;
     router.push({
-      pathname: "/(tabs)/dex/[birdId]" as any,
-      params: { birdId: String(birdId) },
+      pathname: "/profile/[userId]" as any,
+      params: { userId: String(user.userId) },
     });
   };
 
-  const goEdit = () => {
-    router.push(`/saerok/write/${collectionId}`);
-  };
-
-  const onReportConfirm = () => {
-    Alert.alert(
-      "신고",
-      "게시물을 신고하시겠어요?\n커뮤니티 가이드에 따라 신고 사유에 해당하는지 검토 후 처리돼요.",
-      [
-        { text: "돌아가기", style: "cancel" },
-        {
-          text: "신고하기",
-          style: "destructive",
-          onPress: async () => {
-            if (busy) return;
-            setBusy(true);
-            try {
-            } finally {
-              setBusy(false);
-            }
-          },
-        },
-      ],
-    );
-  };
-
-  const onMore = () => {
-    if (isMine) {
-      Alert.alert("내 새록", "원하시는 작업을 선택하세요.", [
-        { text: "취소", style: "cancel" },
-        { text: "도감 보기", onPress: goDex },
-        { text: "편집하기", onPress: goEdit },
-      ]);
-      return;
-    }
-
-    Alert.alert("게시물", "원하시는 작업을 선택하세요.", [
-      { text: "취소", style: "cancel" },
-      { text: "도감 보기", onPress: goDex },
-      { text: "신고하기", style: "destructive", onPress: onReportConfirm },
-    ]);
-  };
-
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, { paddingTop: insets.top + rs(3) }]}>
       <Pressable onPress={onBack} style={styles.circleBtn} hitSlop={rs(10)}>
-        <Text style={styles.btnText}>←</Text>
+        <BlurView intensity={8} tint="light" style={styles.circleBlur} />
+        <BackButtonIcon size={rs(40)} withBackground={false} />
       </Pressable>
 
-      <View style={{ flexDirection: "row", gap: rs(9) }}>
-        <Pressable onPress={onMore} style={styles.circleBtn} hitSlop={rs(10)}>
-          <Text style={styles.btnText}>⋯</Text>
+      <View style={styles.rightWrap}>
+        <Pressable
+          onPress={onProfile}
+          style={styles.profileBtn}
+          hitSlop={rs(10)}
+          disabled={!user?.userId}
+        >
+          <BlurView intensity={8} tint="light" style={styles.profileBlur} />
+          {user?.thumbnailProfileImageUrl ? (
+            <Image
+              source={{ uri: user.thumbnailProfileImageUrl }}
+              style={styles.profileImg}
+            />
+          ) : (
+            <View style={styles.profileFallback} />
+          )}
+          <Text numberOfLines={1} style={styles.profileName}>
+            {user?.nickname ?? ""}
+          </Text>
         </Pressable>
       </View>
     </View>
@@ -88,11 +70,10 @@ export default function SaerokDetailHeader({
 const styles = StyleSheet.create({
   wrap: {
     position: "absolute",
-    top: 0,
+    top: 27,
     left: 0,
     right: 0,
     paddingHorizontal: rs(24),
-    paddingTop: rs(10),
     paddingBottom: rs(10),
     flexDirection: "row",
     alignItems: "center",
@@ -104,14 +85,53 @@ const styles = StyleSheet.create({
     width: rs(40),
     height: rs(40),
     borderRadius: rs(20),
-    backgroundColor: "rgba(255,255,255,0.65)",
     alignItems: "center",
     justifyContent: "center",
+    overflow: "hidden",
   },
-  btnText: {
-    fontSize: rfs(20),
-    fontWeight: "900",
-    color: "#111827",
-    lineHeight: rfs(22),
+  circleBlur: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: rs(20),
+    backgroundColor: "rgba(254, 254, 254, 0.6)",
+  },
+  rightWrap: {
+    flexDirection: "row",
+  },
+  profileBtn: {
+    height: rs(40),
+    borderRadius: rs(20),
+    paddingLeft: rs(10),
+    paddingRight: rs(17),
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(7),
+    overflow: "hidden",
+  },
+  profileBlur: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: rs(20),
+    backgroundColor: "rgba(254, 254, 254, 0.6)",
+  },
+  profileImg: {
+    width: rs(25),
+    height: rs(25),
+    borderRadius: rs(16),
+    borderWidth: 1,
+    borderColor: "#F2F2F2",
+    backgroundColor: "#D1D5DB",
+  },
+  profileFallback: {
+    width: rs(25),
+    height: rs(25),
+    borderRadius: rs(16),
+    borderWidth: 1,
+    borderColor: "#F2F2F2",
+    backgroundColor: "#D1D5DB",
+  },
+  profileName: {
+    fontSize: rfs(15),
+    lineHeight: rfs(20),
+    color: "#0D0D0D",
+    maxWidth: rs(110),
   },
 });

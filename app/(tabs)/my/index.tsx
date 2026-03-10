@@ -10,6 +10,7 @@ import BellIcon from "@/assets/icon/icon/BellIcon";
 import LockIcon from "@/assets/icon/icon/LockIcon";
 import NoticeIcon from "@/assets/icon/icon/NoticeIcon";
 import DocumentIcon from "@/assets/icon/icon/DocumentIcon";
+import AnnouncementIcon from "@/assets/icon/icon/AnnouncementIcon";
 
 import Profile from "@/components/my/Profile";
 import MenuItem from "@/components/my/MenuItem";
@@ -73,6 +74,14 @@ export default function MyHome() {
               />
 
               <MenuItem
+                icon={<AnnouncementIcon color="#F7BE65" />}
+                label="공지사항"
+                isActive
+                labelColor="#111111"
+                onPress={() => router.push("/announcement")}
+              />
+
+              <MenuItem
                 icon={
                   <NotificationIcon
                     color={isLoggedIn ? "#F6C343" : "#D1D5DB"}
@@ -85,6 +94,7 @@ export default function MyHome() {
                 onPress={() => router.push("/my/notification-settings")}
               />
 
+              {/* TODO: feedback 페이지 만들기 */}
               <MenuItem
                 icon={<DocumentIcon color="#F6C343" />}
                 label="의견 보내기"
@@ -122,6 +132,7 @@ export default function MyHome() {
                 label="버전 정보"
                 isActive
                 labelColor="#111111"
+                rightText="1.0.0"
                 onPress={() => {}}
               />
             </View>
