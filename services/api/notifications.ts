@@ -29,6 +29,7 @@ export const upsertNotificationTokenApi = async (
     const res = await axiosPrivate.post<UpsertNotificationTokenResponse>(
       "/notifications/tokens",
       body,
+      { showOverlay: false } as any,
     );
     return res.data;
   } catch (e) {
@@ -64,13 +65,19 @@ export const toggleNotificationSettingApi = async (
   body: ToggleNotificationSettingRequest,
 ): Promise<ToggleNotificationSettingResponse> => {
   try {
+    console.log("[toggleNotificationSettingApi] REQUEST", body);
     const res = await axiosPrivate.patch<ToggleNotificationSettingResponse>(
       "/notifications/settings/toggle",
       body,
     );
     return res.data;
   } catch (e) {
-    console.log("[toggleNotificationSettingApi] ERROR", e);
+    const err: any = e;
+    console.log(
+      "[toggleNotificationSettingApi] ERROR",
+      err?.response?.status,
+      err?.response?.data ?? err,
+    );
     throw e;
   }
 };
@@ -173,4 +180,3 @@ export const deleteAllNotificationsApi = async (): Promise<void> => {
     throw e;
   }
 };
-

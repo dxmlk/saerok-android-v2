@@ -1,5 +1,6 @@
 ﻿import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 import { rfs, rs } from "@/theme";
 import { font } from "@/theme/typography";
 import { BirdInfo } from "@/services/api/birds";
@@ -46,14 +47,13 @@ export default function SearchSuggestions({
         const isBookmarked = bookmarkedIds.has(info.birdId);
         const vote = suggestionVotes?.[info.birdId];
         return (
-          <Pressable
+          <TouchableOpacity
             key={info.birdId}
             onPress={() => onSelect(info)}
             style={[styles.row, idx === 0 && styles.rowFirst]}
-            android_ripple={{ color: "rgba(0,0,0,0.06)" }}
           >
             <View style={styles.rowLeft}>
-              <Pressable
+              <TouchableOpacity
                 onPress={() => onToggleBookmark?.(info.birdId)}
                 hitSlop={rs(8)}
               >
@@ -64,7 +64,7 @@ export default function SearchSuggestions({
                   fill={isBookmarked ? "#F7BE65" : "none"}
                   color={isBookmarked ? "#F7BE65" : "#D1D5DB"}
                 />
-              </Pressable>
+              </TouchableOpacity>
               <View style={styles.texts}>
                 <Text style={styles.kor}>{info.koreanName}</Text>
                 <Text style={styles.sci}>{info.scientificName}</Text>
@@ -72,7 +72,7 @@ export default function SearchSuggestions({
             </View>
             {vote ? (
               <View style={styles.voteWrap}>
-                <Pressable
+                <TouchableOpacity
                   onPress={() => onPressAgreeSuggestion?.(info)}
                   hitSlop={rs(8)}
                   style={styles.voteBtnOuter}
@@ -89,8 +89,8 @@ export default function SearchSuggestions({
                       color={vote.isAgreedByMe ? "#FFFFFF" : "#4190FF"}
                     />
                   </View>
-                </Pressable>
-                <Pressable
+                </TouchableOpacity>
+                <TouchableOpacity
                   onPress={() => onPressDisagreeSuggestion?.(info)}
                   hitSlop={rs(8)}
                   style={styles.voteBtnOuter}
@@ -107,19 +107,19 @@ export default function SearchSuggestions({
                       color={vote.isDisagreedByMe ? "#FFFFFF" : "#FF234F"}
                     />
                   </View>
-                </Pressable>
+                </TouchableOpacity>
               </View>
             ) : (
-              <Pressable
+              <TouchableOpacity
                 onPress={() => onPressDetail?.(info.birdId)}
                 hitSlop={rs(8)}
               >
                 <View style={styles.bracket}>
                   <InfoChevronIcon width={rs(17)} height={rs(17)} color="#0D0D0D" />
                 </View>
-              </Pressable>
+              </TouchableOpacity>
             )}
-          </Pressable>
+          </TouchableOpacity>
         );
       })}
     </View>

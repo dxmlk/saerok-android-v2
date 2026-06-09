@@ -2,13 +2,13 @@
 import ScrapIcon from "@/assets/icon/button/ScrapIcon";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { openDexDetail } from "@/lib/navigation";
 import React from "react";
 import {
   ActivityIndicator,
   FlatList,
   FlatListProps,
   Image,
-  Pressable,
   RefreshControl,
   StyleSheet,
   Text,
@@ -17,6 +17,7 @@ import {
 import { Animated } from "react-native";
 import { font } from "@/theme/typography";
 import { rfs, rs } from "@/theme";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 
 export type DexItem = {
   id: number;
@@ -27,6 +28,10 @@ export type DexItem = {
 
 type DexListRowItem =
   | DexItem
+  | {
+      id: string;
+      __skeleton: true;
+    }
   | {
       id: string;
       __placeholder: true;
@@ -63,31 +68,47 @@ export default function DexList({
   contentTopPadding = 0,
 }: Props) {
   const router = useRouter();
-  const listData: DexListRowItem[] =
-    items.length % 2 === 1
+  const showInitialSkeleton = loading && items.length === 0;
+  const skeletonData: DexListRowItem[] = Array.from(
+    { length: 8 },
+    (_, index) => ({
+      id: `__dex-skeleton-${index}`,
+      __skeleton: true,
+    }),
+  );
+  const listData: DexListRowItem[] = showInitialSkeleton
+    ? skeletonData
+    : items.length % 2 === 1
       ? [...items, { id: "__dex-placeholder__", __placeholder: true }]
       : items;
 
   const renderItem = ({ item }: { item: DexListRowItem }) => {
+    if ("__skeleton" in item) {
+      return (
+        <View style={styles.card}>
+          <View style={[styles.img, styles.skeletonBlock]} />
+          <View style={styles.skeletonScrap} />
+          <View style={styles.skeletonTextWrap}>
+            <View style={styles.skeletonKor} />
+            <View style={styles.skeletonSci} />
+          </View>
+        </View>
+      );
+    }
+
     if ("__placeholder" in item) {
       return <View style={[styles.card, styles.placeholderCard]} />;
     }
     const isBookmarked = bookmarkedIds.has(item.id);
 
     return (
-      <Pressable
-        onPress={() =>
-          router.push({
-            pathname: "/(tabs)/dex/[birdId]" as any,
-            params: { birdId: String(item.id) },
-          })
-        }
+      <TouchableOpacity
+        onPress={() => openDexDetail(router, item.id, { from: "dex_list" })}
         style={styles.card}
-        android_ripple={{ color: "rgba(0,0,0,0.06)" }}
       >
         <Image source={{ uri: item.thumbImageUrl }} style={styles.img} />
 
-        <Pressable
+        <TouchableOpacity
           onPress={(e) => {
             e.stopPropagation?.();
             onToggleBookmark?.(item.id);
@@ -102,7 +123,7 @@ export default function DexList({
             stroke={isBookmarked ? "#FEFEFE" : "#6D6D6D"}
             strokeWidth={1.5}
           />
-        </Pressable>
+        </TouchableOpacity>
 
         <LinearGradient
           colors={[
@@ -123,7 +144,7 @@ export default function DexList({
             {item.scientificName}
           </Text>
         </View>
-      </Pressable>
+      </TouchableOpacity>
     );
   };
 
@@ -149,9 +170,9 @@ export default function DexList({
         ) : undefined
       }
       ListFooterComponent={
-        loading ? (
+        loading && items.length > 0 ? (
           <View style={{ paddingVertical: rs(18) }}>
-            <ActivityIndicator />
+            <ActivityIndicator color="#4190FF" />
           </View>
         ) : null
       }
@@ -161,7 +182,7 @@ export default function DexList({
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: rs(40),
+    paddingTop: rs(20),
     paddingHorizontal: rs(9),
     paddingBottom: rs(100),
   },
@@ -242,5 +263,42 @@ const styles = StyleSheet.create({
     color: "#7a7a7a",
     lineHeight: rfs(16),
     fontWeight: "400",
+  },
+  skeletonBlock: {
+    backgroundColor: "#E8ECEB",
+  },
+  skeletonScrap: {
+    position: "absolute",
+    top: rs(12),
+    right: rs(12),
+    width: rs(23),
+    height: rs(29),
+    borderRadius: rs(8),
+    backgroundColor: "#DAE0DE",
+    zIndex: 20,
+  },
+  skeletonTextWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: rs(52),
+    paddingHorizontal: rs(14),
+    paddingVertical: rs(9),
+    backgroundColor: "#FFFFFF",
+    zIndex: 30,
+  },
+  skeletonKor: {
+    width: "62%",
+    height: rs(15),
+    borderRadius: rs(8),
+    backgroundColor: "#E8ECEB",
+  },
+  skeletonSci: {
+    width: "78%",
+    height: rs(11),
+    borderRadius: rs(6),
+    marginTop: rs(7),
+    backgroundColor: "#E8ECEB",
   },
 });

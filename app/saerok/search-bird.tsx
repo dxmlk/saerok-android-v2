@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import SearchBar from "@/components/common/SearchBar";
 import SearchSuggestions from "@/components/common/SearchSuggestions";
 import SimpleHeader from "@/components/common/SimpleHeader";
+import AppConfirmModal from "@/components/common/AppConfirmModal";
 import CloseLineIcon from "@/assets/icon/common/CloseLineIcon";
 import NoticeIcon from "@/assets/icon/notice/NoticeIcon";
 import {
@@ -62,6 +63,8 @@ export default function SearchBirdScreen() {
   const [voteConfirmTarget, setVoteConfirmTarget] = useState<BirdInfo | null>(
     null,
   );
+  const [candidateConfirmTarget, setCandidateConfirmTarget] =
+    useState<BirdInfo | null>(null);
   const [skipAgreeConfirm, setSkipAgreeConfirm] = useState(false);
   const anim = useRef(new Animated.Value(0)).current;
 
@@ -87,47 +90,68 @@ export default function SearchBirdScreen() {
 
   useEffect(() => {
     let canceled = false;
+    const term = q.trim();
 
-    const load = async () => {
-      const term = q.trim();
-      if (!term) {
+    if (term) {
+      const t = setTimeout(async () => {
         try {
-          const res = await fetchBookmarkListApi();
-          const list = res.data?.items ?? res.data ?? [];
-          const infos: BirdInfo[] = list.map((b: any) => ({
-            birdId: b.birdId,
-            koreanName: b.koreanName,
-            scientificName: b.scientificName,
-          }));
-          if (canceled) return;
-          setSuggestions(infos);
-          setBookmarkedIds(new Set(infos.map((x) => x.birdId)));
+          const res = await autocompleteApi(term);
+          const names: string[] = res.data?.suggestions ?? [];
+          const infos = await Promise.all(
+            names.map((name) => getBirdInfoByNameApi(name)),
+          );
+          if (!canceled) {
+            setSuggestions(infos.filter((x): x is BirdInfo => x !== null));
+          }
         } catch {
           if (!canceled) setSuggestions([]);
         }
-        return;
-      }
+      }, 300);
 
+      return () => {
+        canceled = true;
+        clearTimeout(t);
+      };
+    }
+
+    const loadBookmarks = async () => {
       try {
-        const res = await autocompleteApi(term);
-        const names: string[] = res.data?.suggestions ?? [];
-        const infos = await Promise.all(
-          names.map((name) => getBirdInfoByNameApi(name)),
-        );
-        if (!canceled) {
-          setSuggestions(infos.filter((x): x is BirdInfo => x !== null));
-        }
+        const res = await fetchBookmarkListApi();
+        const list = res.data?.items ?? res.data ?? [];
+        const infos: BirdInfo[] = list.map((b: any) => ({
+          birdId: b.birdId,
+          koreanName: b.koreanName,
+          scientificName: b.scientificName,
+        }));
+        if (canceled) return;
+        setSuggestions(infos);
+        setBookmarkedIds(new Set(infos.map((x) => x.birdId)));
       } catch {
         if (!canceled) setSuggestions([]);
       }
     };
 
-    const t = setTimeout(load, 300);
+    void loadBookmarks();
     return () => {
       canceled = true;
-      clearTimeout(t);
     };
   }, [q]);
+
+  const searchBirds = async () => {
+    const term = q.trim();
+    if (!term) return;
+
+    try {
+      const res = await autocompleteApi(term);
+      const names: string[] = res.data?.suggestions ?? [];
+      const infos = await Promise.all(
+        names.map((name) => getBirdInfoByNameApi(name)),
+      );
+      setSuggestions(infos.filter((x): x is BirdInfo => x !== null));
+    } catch {
+      setSuggestions([]);
+    }
+  };
 
   useEffect(() => {
     if (!suggestionMode || !Number.isFinite(suggestionCollectionId)) return;
@@ -159,12 +183,7 @@ export default function SearchBirdScreen() {
 
   const onSelect = (info: BirdInfo) => {
     if (suggestionMode && Number.isFinite(suggestionCollectionId)) {
-      void (async () => {
-        try {
-          await createBirdIdSuggestionApi(suggestionCollectionId, info.birdId);
-          router.back();
-        } catch {}
-      })();
+      setCandidateConfirmTarget(info);
       return;
     }
 
@@ -173,11 +192,21 @@ export default function SearchBirdScreen() {
     router.back();
   };
 
+  const submitCandidateSuggestion = async () => {
+    const target = candidateConfirmTarget;
+    if (!target || !Number.isFinite(suggestionCollectionId)) return;
+
+    try {
+      await createBirdIdSuggestionApi(suggestionCollectionId, target.birdId);
+      router.back();
+    } catch {}
+  };
+
   const onPressDetail = (birdId: number) => {
-    router.push({
-      pathname: "/(tabs)/dex/[birdId]" as any,
-      params: {
-        birdId: String(birdId),
+    const { openDexDetail } = require("@/lib/navigation");
+    openDexDetail(router, birdId, {
+      from: "saerok_search_bird",
+      extraParams: {
         returnTo: "/saerok/search-bird",
         returnMode: suggestionMode ? "bird-id-suggestion" : undefined,
         returnCollectionId:
@@ -266,7 +295,7 @@ export default function SearchBirdScreen() {
               ? "\uc0c8 \uc774\ub984\uc744 \uc785\ub825\ud574\uc8fc\uc138\uc694"
               : "\uc0c8 \uc774\ub984\uc744 \uc785\ub825\ud574\uc8fc\uc138\uc694"
           }
-          onSubmit={() => {}}
+          onSubmit={searchBirds}
           onBack={() => router.back()}
           onClear={() => setQ("")}
         />
@@ -286,6 +315,18 @@ export default function SearchBirdScreen() {
         onPressDisagreeSuggestion={
           suggestionMode ? onPressDisagreeSuggestion : undefined
         }
+      />
+
+      <AppConfirmModal
+        visible={!!candidateConfirmTarget}
+        mainText={`‘${candidateConfirmTarget?.koreanName ?? ""}’로 채택하시겠어요?`}
+        subText={
+          "채택된 이후 동정 돕기 창은 사라지며,\n다시 이름 모를 새로 전환하면\n보이게 할 수 있어요."
+        }
+        leftText="취소"
+        rightText="채택하기"
+        onClose={() => setCandidateConfirmTarget(null)}
+        onRight={submitCandidateSuggestion}
       />
 
       <Modal
@@ -372,7 +413,7 @@ export default function SearchBirdScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#F7F7F7" },
+  root: { flex: 1, backgroundColor: "#FFFFFF" },
   searchSection: {
     paddingHorizontal: rs(24),
     paddingTop: rs(10),

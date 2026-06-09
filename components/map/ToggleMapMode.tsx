@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React from "react";
+import { StyleSheet, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
-import { rfs, rs } from "@/theme";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
+import { rs } from "@/theme";
 
 type Props = {
   isMineOnly: boolean;
@@ -15,34 +16,14 @@ export default function ToggleMapMode({
   onToggle,
   bottom = rs(120),
 }: Props) {
-  const [showNotice, setShowNotice] = useState(false);
-  const [noticeText, setNoticeText] = useState("");
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const isFirstMount = useRef(true);
-
-  useEffect(() => {
-    if (isFirstMount.current) {
-      isFirstMount.current = false;
-      return;
-    }
-
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setNoticeText(isMineOnly ? "내 새록만 보여요" : "다른 사람의 새록도 보여요");
-    setShowNotice(true);
-    timeoutRef.current = setTimeout(() => setShowNotice(false), 1000);
-
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [isMineOnly]);
-
   return (
-    <>
-      <Pressable
-        onPress={() => onToggle(!isMineOnly)}
+    <TouchableOpacity
+      onPress={() => onToggle(!isMineOnly)}
+      style={[styles.pressArea, { bottom }]}
+    >
+      <View
         style={[
           styles.switchWrap,
-          { bottom },
           isMineOnly ? styles.switchMine : styles.switchAll,
         ]}
       >
@@ -67,21 +48,21 @@ export default function ToggleMapMode({
             />
           </Svg>
         </View>
-      </Pressable>
-
-      {showNotice ? (
-        <View style={styles.noticeWrap} pointerEvents="none">
-          <Text style={styles.noticeText}>{noticeText}</Text>
-        </View>
-      ) : null}
-    </>
+      </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  switchWrap: {
+  pressArea: {
     position: "absolute",
     right: rs(24),
+    width: rs(92),
+    height: rs(64),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  switchWrap: {
     width: rs(72),
     height: rs(42),
     borderRadius: rs(21),
@@ -105,25 +86,4 @@ const styles = StyleSheet.create({
   },
   knobMine: { transform: [{ translateX: 0 }] },
   knobAll: { transform: [{ translateX: rs(30) }] },
-  noticeWrap: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: "50%",
-    marginTop: -rs(25),
-    alignItems: "center",
-  },
-  noticeText: {
-    backgroundColor: "rgba(254,254,254,0.6)",
-    borderRadius: rs(10),
-    overflow: "hidden",
-    height: rs(50),
-    paddingHorizontal: rs(24),
-    textAlignVertical: "center",
-    includeFontPadding: false,
-    color: "#0D0D0D",
-    fontSize: rfs(18),
-    lineHeight: rfs(50),
-    fontWeight: "400",
-  },
 });

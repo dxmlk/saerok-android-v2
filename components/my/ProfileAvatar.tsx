@@ -26,6 +26,7 @@ type Props = {
   cacheKey?: string | number | null;
   eggWidth?: number;
   eggHeight?: number;
+  borderWidth?: number;
 };
 
 export default function ProfileAvatar({
@@ -35,6 +36,7 @@ export default function ProfileAvatar({
   cacheKey,
   eggWidth = rs(47),
   eggHeight = rs(57),
+  borderWidth = rs(2),
 }: Props) {
   const bg = useMemo(() => pickColor(seed || "user"), [seed]);
 
@@ -53,7 +55,7 @@ export default function ProfileAvatar({
           width: size,
           height: size,
           borderRadius: size / 2,
-          borderWidth: rs(2),
+          borderWidth,
           borderColor: "#F2F2F2",
           backgroundColor: uri ? "#FFFFFF" : bg,
         },

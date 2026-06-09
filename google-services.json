@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "891028815269",
-    "project_id": "saerok-687bd",
-    "storage_bucket": "saerok-687bd.firebasestorage.app"
+    "project_number": "875110606515",
+    "project_id": "saerok-fcm",
+    "storage_bucket": "saerok-fcm.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:891028815269:android:bf9b395c51e79cebf5fc4c",
+        "mobilesdk_app_id": "1:875110606515:android:5490c33e3d32bcd67232c6",
         "android_client_info": {
           "package_name": "com.apu.saerok"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBdTOF6QVIkrsqB5ueqhn4aGLeypcOhlDU"
+          "current_key": "AIzaSyCuK3RxI4TYaYm8DrNRueYPiVxtg75cCn0"
         }
       ],
       "services": {

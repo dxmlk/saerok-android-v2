@@ -1,12 +1,13 @@
 import { type NaverMapViewRef } from "@mj-studio/react-native-naver-map";
 import * as Location from "expo-location";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { useIsFocused, useNavigation } from "@react-navigation/native";
+import { BackHandler } from "react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
-  Pressable,
-  StyleSheet,
+  LayoutChangeEvent,
   Text,
   View,
 } from "react-native";
@@ -14,6 +15,8 @@ import Svg, { Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import SearchBar from "@/components/common/SearchBar";
+import { MapAllToast, MapMineOnlyToast } from "@/components/common/AppToast";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 import CurrentLocationButton from "@/components/map/CurrentLocationButton";
 import MapCollectionsSheet from "@/components/map/MapCollectionsSheet";
 import NaverMap from "@/components/map/NaverMap";
@@ -23,38 +26,40 @@ import {
   type NearbyCollectionItem,
 } from "@/services/api/collections";
 import { useMapSearchState } from "@/states/useMapSearchState";
-import { rfs, rs } from "@/theme";
-
-const DEFAULT_CENTER = {
-  latitude: 37.58939182281775,
-  longitude: 127.02990237554194,
-};
-const MOVED_EPSILON = 0.0001;
-const SHEET_PEEK_HEIGHT = 60;
-const TAB_BAR_HEIGHT = 60;
-const DEFAULT_ZOOM = 15;
-
-function calcRadiusMetersByScreen(latitude: number, zoom: number) {
-  const screenWidth = Dimensions.get("window").width;
-  const metersPerPixel =
-    (156543.03392 * Math.cos((latitude * Math.PI) / 180)) / Math.pow(2, zoom);
-  const halfScreenMeters = (screenWidth * metersPerPixel) / 2;
-  const withMargin = halfScreenMeters * 1.1;
-  return Math.max(100, Math.round(withMargin));
-}
-
-function getReadableAddress(p?: Location.LocationGeocodedAddress) {
-  if (!p) return "";
-  const city = p.city || p.subregion || p.region || "";
-  const district = p.district || "";
-  const street = p.street || "";
-  const name = p.name || "";
-  return [city, district, street || name].filter(Boolean).join(" ");
-}
+import { rs } from "@/theme";
+import {
+  BOOTSTRAP_LOCATION_TIMEOUT_MS,
+  DEFAULT_CENTER,
+  DEFAULT_ZOOM,
+  MOVED_EPSILON,
+  NEARBY_LIMITED_COUNT,
+  NEARBY_LIMITED_ZOOM,
+  RESEARCH_BUTTON_HEIGHT,
+  RESEARCH_TOP_MARGIN,
+  SEARCH_BAR_HEIGHT,
+  SEARCH_TOP_MARGIN,
+  SHEET_PEEK_HEIGHT,
+  TAB_BAR_HEIGHT,
+  MAP_TEXT,
+} from "./constants";
+import { styles } from "./styles";
+import {
+  calcRadiusMetersByScreen,
+  getReadableAddress,
+  withTimeout,
+} from "./utils";
 
 export default function MapIndex() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ lat?: string; lng?: string }>();
+  const params = useLocalSearchParams<{
+    lat?: string;
+    lng?: string;
+    from?: string;
+    returnTo?: string;
+    returnCollectionId?: string;
+  }>();
+  const navigation = useNavigation();
+  const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const mapRef = useRef<NaverMapViewRef>(null);
 
@@ -62,14 +67,23 @@ export default function MapIndex() {
   const [center, setCenter] = useState(DEFAULT_CENTER);
   const [myLocation, setMyLocation] = useState(DEFAULT_CENTER);
   const [isMineOnly, setIsMineOnly] = useState(false);
+  const [mapToastType, setMapToastType] = useState<"mine" | "all" | null>(null);
   const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
   const [markers, setMarkers] = useState<NearbyCollectionItem[]>([]);
-  const [addressText, setAddressText] = useState("현재 위치");
+  const [rootSize, setRootSize] = useState(() => ({
+    width: Dimensions.get("window").width,
+    height: Dimensions.get("window").height,
+  }));
+  const [addressText, setAddressText] = useState<string>(
+    MAP_TEXT.currentLocation,
+  );
   const [pendingCenter, setPendingCenter] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
   const geocodeSeqRef = useRef(0);
+  const locationRequestSeqRef = useRef(0);
+  const handledRouteLocationRef = useRef<string | null>(null);
   const { selectedCenter, setSelectedCenter } = useMapSearchState();
 
   const moved = useMemo(() => {
@@ -80,17 +94,49 @@ export default function MapIndex() {
     );
   }, [pendingCenter, center.latitude, center.longitude]);
 
+  const coveredBottomHeight = rs(TAB_BAR_HEIGHT) + insets.bottom;
+  const topOverlayBottom = useMemo(() => {
+    const searchBottom =
+      insets.top + rs(SEARCH_TOP_MARGIN) + rs(SEARCH_BAR_HEIGHT);
+    const researchBottom =
+      insets.top + rs(RESEARCH_TOP_MARGIN) + rs(RESEARCH_BUTTON_HEIGHT);
+    return Math.max(searchBottom, researchBottom);
+  }, [insets.top]);
+
+  const visibleMapViewport = useMemo(
+    () => ({
+      width: rootSize.width,
+      height: Math.max(
+        rs(120),
+        rootSize.height -
+          topOverlayBottom -
+          coveredBottomHeight -
+          rs(SHEET_PEEK_HEIGHT),
+      ),
+    }),
+    [coveredBottomHeight, rootSize.height, rootSize.width, topOverlayBottom],
+  );
+
   const fetchNearby = async (
     latitude: number,
     longitude: number,
     mineOnly: boolean,
+    zoom = mapZoom,
   ) => {
     try {
+      const shouldLimitNearby = zoom >= NEARBY_LIMITED_ZOOM;
       const items = await fetchNearbyCollections({
         latitude,
         longitude,
-        radiusMeters: calcRadiusMetersByScreen(latitude, mapZoom),
+        radiusMeters: calcRadiusMetersByScreen(
+          latitude,
+          zoom,
+          visibleMapViewport.width,
+          visibleMapViewport.height,
+        ),
         isMineOnly: mineOnly,
+        mode: shouldLimitNearby ? "EVEN" : undefined,
+        limit: shouldLimitNearby ? NEARBY_LIMITED_COUNT : undefined,
       });
       setMarkers(items);
     } catch {
@@ -107,95 +153,271 @@ export default function MapIndex() {
       });
       if (seq !== geocodeSeqRef.current) return;
       const text = getReadableAddress(places?.[0]);
-      setAddressText(text || "현재 위치");
+      setAddressText(text || MAP_TEXT.currentLocation);
     } catch {
-      if (seq === geocodeSeqRef.current) setAddressText("현재 위치");
+      if (seq === geocodeSeqRef.current) setAddressText(MAP_TEXT.currentLocation);
     }
   };
 
+  const researchAt = useCallback(
+    async (
+      next: { latitude: number; longitude: number },
+      mineOnly: boolean,
+      zoom = mapZoom,
+    ) => {
+      setCenter(next);
+      setPendingCenter(null);
+      await Promise.all([
+        fetchNearby(next.latitude, next.longitude, mineOnly, zoom),
+        updateCenterAddress(next.latitude, next.longitude),
+      ]);
+    },
+    [mapZoom, visibleMapViewport.height, visibleMapViewport.width],
+  );
+
+  const previewLocation = useCallback(
+    (
+      next: { latitude: number; longitude: number },
+      options?: { saveAsMyLocation?: boolean; zoom?: number; openBubble?: boolean },
+    ) => {
+      if (options?.saveAsMyLocation) {
+        setMyLocation(next);
+      }
+      setPendingCenter(next);
+      // If caller requests an opened bubble, ensure zoom is high enough to render bubble markers
+      // Use 16 to exceed cluster->single threshold in NaverMap (15.5)
+      const targetZoomBase = options?.zoom ?? DEFAULT_ZOOM;
+      const targetZoom = options?.openBubble ? Math.max(targetZoomBase, 16) : targetZoomBase;
+      setMapZoom(targetZoom);
+      mapRef.current?.animateCameraTo({
+        latitude: next.latitude,
+        longitude: next.longitude,
+        zoom: targetZoom,
+        duration: 280,
+      });
+    },
+    [],
+  );
+
   const resolveCurrentLocation = async () => {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
+      const permission = await Location.getForegroundPermissionsAsync();
+      const status =
+        permission.status === "granted"
+          ? permission.status
+          : (await Location.requestForegroundPermissionsAsync()).status;
+
       if (status !== "granted") {
-        setCenter(DEFAULT_CENTER);
         setMyLocation(DEFAULT_CENTER);
+        setCenter(DEFAULT_CENTER);
+        setLoading(false);
+        void researchAt(DEFAULT_CENTER, isMineOnly, DEFAULT_ZOOM);
         return;
       }
 
-      const loc = await Location.getCurrentPositionAsync({});
+      const lastKnown = await Location.getLastKnownPositionAsync();
+      if (lastKnown) {
+        const quickLocation = {
+          latitude: lastKnown.coords.latitude,
+          longitude: lastKnown.coords.longitude,
+        };
+        setMyLocation(quickLocation);
+        setCenter(quickLocation);
+        setLoading(false);
+        void researchAt(quickLocation, isMineOnly, DEFAULT_ZOOM);
+      }
+
+      const loc = await withTimeout(
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        }),
+        BOOTSTRAP_LOCATION_TIMEOUT_MS,
+      );
       const next = {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
       };
-      setCenter(next);
       setMyLocation(next);
+      if (loading) {
+        setCenter(next);
+        setLoading(false);
+      }
+      void researchAt(next, isMineOnly, DEFAULT_ZOOM);
     } catch {
-      setCenter(DEFAULT_CENTER);
       setMyLocation(DEFAULT_CENTER);
+      setCenter(DEFAULT_CENTER);
+      setLoading(false);
+      void researchAt(DEFAULT_CENTER, isMineOnly, DEFAULT_ZOOM);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    const lat = Number(params.lat);
+    const lng = Number(params.lng);
+    // If a route provided explicit coordinates, prefer them and skip auto-resolve
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      setLoading(false);
+      return;
+    }
     void resolveCurrentLocation();
-  }, []);
+  }, [params.lat, params.lng]);
 
+  // When the map is opened with a returnTo param, intercept hardware back and
+  // return explicitly to the requested destination.
   useEffect(() => {
-    if (loading) return;
-    void fetchNearby(center.latitude, center.longitude, isMineOnly);
-    void updateCenterAddress(center.latitude, center.longitude);
-  }, [loading, center.latitude, center.longitude, isMineOnly]);
+    if (!isFocused) return;
+
+    const returnTo = params.returnTo as string | undefined;
+    const returnCollectionId = params.returnCollectionId as string | undefined;
+    const origin = params.from as string | undefined;
+    // eslint-disable-next-line no-console
+    console.log("[MapIndex] params received:", {
+      focused: isFocused,
+      from: origin,
+      returnTo,
+      returnCollectionId,
+      lat: params.lat,
+      lng: params.lng,
+    });
+    if (!returnTo) return;
+
+    const onHardwareBack = () => {
+      const canGoBack = navigation && navigation.canGoBack ? navigation.canGoBack() : false;
+      // eslint-disable-next-line no-console
+      console.log(
+        "[MapIndex] hardware back pressed, from:",
+        origin,
+        "returnTo:",
+        returnTo,
+        "canGoBack:",
+        canGoBack,
+      );
+
+      const explicitDetailPath =
+        returnTo?.startsWith("/saerok/") && !returnTo?.includes("[collectionId]")
+          ? returnTo
+          : returnCollectionId
+          ? `/saerok/${returnCollectionId}`
+          : undefined;
+
+      if (
+        origin === "saerok_detail" &&
+        explicitDetailPath
+      ) {
+        // Saerok detail opens the tab map with replace, so returning with replace
+        // restores one detail screen without leaving detail -> detail in history.
+        // eslint-disable-next-line no-console
+        console.log("[MapIndex] replace to explicit saerok detail", explicitDetailPath);
+        router.replace(explicitDetailPath);
+        return true;
+      }
+
+      if (canGoBack) {
+        // If there is some other stack history, preserve it.
+        // eslint-disable-next-line no-console
+        console.log("[MapIndex] router.back() default");
+        router.back();
+        return true;
+      }
+
+      // If we cannot go back, use explicit path when available.
+      if (explicitDetailPath) {
+        // eslint-disable-next-line no-console
+        console.log("[MapIndex] replace to explicit returnTo fallback", explicitDetailPath);
+        router.replace(explicitDetailPath);
+        return true;
+      }
+
+      // Otherwise fall back to the original returnTo route object.
+      const paramsObj: any = {};
+      if (returnCollectionId) paramsObj.collectionId = returnCollectionId;
+      // eslint-disable-next-line no-console
+      console.log("[MapIndex] replace to returnTo fallback", returnTo, paramsObj);
+      router.replace({ pathname: returnTo as any, params: paramsObj } as any);
+      return true;
+    };
+
+    const sub = BackHandler.addEventListener("hardwareBackPress", onHardwareBack);
+    return () => sub.remove();
+  }, [isFocused, params.from, params.returnTo, params.returnCollectionId, navigation, router]);
+
+  const refreshAndMoveToCurrentLocation = async () => {
+    const requestId = ++locationRequestSeqRef.current;
+
+    previewLocation(myLocation, { zoom: DEFAULT_ZOOM });
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") return;
+
+      const loc = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      });
+      if (requestId !== locationRequestSeqRef.current) return;
+
+      const next = {
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      };
+      previewLocation(next, { saveAsMyLocation: true, zoom: DEFAULT_ZOOM });
+    } catch {
+      if (requestId !== locationRequestSeqRef.current) return;
+      previewLocation(myLocation, { zoom: DEFAULT_ZOOM });
+    }
+  };
 
   useEffect(() => {
     const lat = Number(params.lat);
     const lng = Number(params.lng);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    const routeKey = `${lat},${lng}`;
+    if (handledRouteLocationRef.current === routeKey) return;
+    handledRouteLocationRef.current = routeKey;
     const next = { latitude: lat, longitude: lng };
-    setCenter(next);
-    setMapZoom(DEFAULT_ZOOM);
-    setPendingCenter(null);
-    mapRef.current?.animateCameraTo({
-      latitude: next.latitude,
-      longitude: next.longitude,
-      zoom: DEFAULT_ZOOM,
-      duration: 280,
-    });
-  }, [params.lat, params.lng]);
+    // center on the provided coordinates and open bubble marker at a higher zoom
+    previewLocation(next, { zoom: DEFAULT_ZOOM, openBubble: true });
+    void researchAt(next, isMineOnly, Math.max(DEFAULT_ZOOM, 16));
+  }, [isMineOnly, params.lat, params.lng, previewLocation, researchAt]);
 
   useEffect(() => {
     if (!selectedCenter) return;
-    setCenter(selectedCenter);
-    setMapZoom(DEFAULT_ZOOM);
-    setPendingCenter(null);
-    mapRef.current?.animateCameraTo({
-      latitude: selectedCenter.latitude,
-      longitude: selectedCenter.longitude,
-      zoom: DEFAULT_ZOOM,
-      duration: 280,
-    });
+    previewLocation(selectedCenter, { zoom: DEFAULT_ZOOM });
     setSelectedCenter(null);
-  }, [selectedCenter, setSelectedCenter]);
+  }, [selectedCenter, setSelectedCenter, previewLocation]);
 
   if (loading) {
     return (
       <View style={styles.loadingWrap}>
-        <ActivityIndicator />
+        <ActivityIndicator color="#4190FF" />
       </View>
     );
   }
 
-  const coveredBottomHeight = rs(TAB_BAR_HEIGHT) + insets.bottom;
   const sheetBottomOffset = 0;
   const floatingBottom = coveredBottomHeight + rs(SHEET_PEEK_HEIGHT + 10);
 
   return (
-    <View style={styles.root}>
+    <View
+      style={styles.root}
+      onLayout={(event: LayoutChangeEvent) => {
+        const { width, height } = event.nativeEvent.layout;
+        setRootSize((prev) =>
+          Math.abs(prev.width - width) < 0.5 &&
+          Math.abs(prev.height - height) < 0.5
+            ? prev
+            : { width, height },
+        );
+      }}
+    >
       <NaverMap
         mapRef={mapRef}
         markers={markers}
         center={{ lat: center.latitude, lng: center.longitude }}
         zoomLevel={mapZoom}
+        viewportWidth={visibleMapViewport.width}
+        viewportHeight={visibleMapViewport.height}
         onCenterChanged={(lat, lng, zoom) => {
           setPendingCenter((prev) => {
             if (
@@ -211,33 +433,38 @@ export default function MapIndex() {
             setMapZoom((prev) => (Math.abs(prev - zoom) >= 0.1 ? zoom : prev));
           }
         }}
-        onOverlayClick={(id) =>
-          router.push({
-            pathname: "/saerok/[collectionId]",
-            params: { collectionId: String(id) },
-          })
-        }
+        onOverlayClick={(id) => {
+          const { openSaerokDetail } = require("@/lib/navigation");
+          // Pass return location so back button returns to this map view
+          openSaerokDetail(router, id, {
+            from: "map_overlay",
+            extraParams: {
+              returnTo: "/map",
+              returnLat: String(pendingCenter?.latitude ?? center.latitude),
+              returnLng: String(pendingCenter?.longitude ?? center.longitude),
+            },
+          });
+        }}
       />
 
       <View style={[styles.searchWrap, { top: insets.top + rs(20) }]}>
-        <Pressable onPress={() => router.push("/map/search" as any)}>
+        <TouchableOpacity onPress={() => router.push("/map/search" as any)}>
           <SearchBar
             value=""
             onChangeText={() => {}}
-            placeholder="원하는 장소 검색"
+            placeholder={MAP_TEXT.searchPlaceholder}
             editable={false}
             onClear={() => {}}
           />
-        </Pressable>
+        </TouchableOpacity>
       </View>
 
       {moved ? (
         <View style={[styles.researchWrap, { top: insets.top + rs(80) }]}>
-          <Pressable
+          <TouchableOpacity
             onPress={() => {
               if (!pendingCenter) return;
-              setCenter(pendingCenter);
-              setPendingCenter(null);
+              void researchAt(pendingCenter, isMineOnly, mapZoom);
             }}
             style={styles.researchBtn}
           >
@@ -250,43 +477,41 @@ export default function MapIndex() {
                 strokeLinejoin="round"
               />
             </Svg>
-            <Text style={styles.researchText}>이 지역 재검색하기</Text>
-          </Pressable>
+            <Text style={styles.researchText}>{MAP_TEXT.researchButton}</Text>
+          </TouchableOpacity>
         </View>
       ) : null}
 
       <CurrentLocationButton
         bottom={floatingBottom}
-        onPress={async () => {
-          try {
-            const loc = await Location.getCurrentPositionAsync({});
-            const next = {
-              latitude: loc.coords.latitude,
-              longitude: loc.coords.longitude,
-            };
-            setMyLocation(next);
-            setCenter(next);
-            setPendingCenter(null);
-            mapRef.current?.animateCameraTo({
-              latitude: next.latitude,
-              longitude: next.longitude,
-              duration: 280,
-            });
-          } catch {
-            setCenter(myLocation);
-            mapRef.current?.animateCameraTo({
-              latitude: myLocation.latitude,
-              longitude: myLocation.longitude,
-              duration: 280,
-            });
-          }
-        }}
+        onPress={refreshAndMoveToCurrentLocation}
       />
 
       <ToggleMapMode
         isMineOnly={isMineOnly}
-        onToggle={(next) => setIsMineOnly(next)}
+        onToggle={(next) => {
+          setIsMineOnly(next);
+          setMapToastType(next ? "mine" : "all");
+          void fetchNearby(
+            (pendingCenter ?? center).latitude,
+            (pendingCenter ?? center).longitude,
+            next,
+            mapZoom,
+          );
+        }}
         bottom={floatingBottom}
+      />
+
+      <MapMineOnlyToast
+        visible={mapToastType === "mine"}
+        onClose={() => setMapToastType((prev) => (prev === "mine" ? null : prev))}
+        bottomOffset={rs(TAB_BAR_HEIGHT + 61)}
+      />
+
+      <MapAllToast
+        visible={mapToastType === "all"}
+        onClose={() => setMapToastType((prev) => (prev === "all" ? null : prev))}
+        bottomOffset={rs(TAB_BAR_HEIGHT + 61)}
       />
 
       <MapCollectionsSheet
@@ -295,54 +520,11 @@ export default function MapIndex() {
         bottomInset={coveredBottomHeight + rs(16)}
         bottomOffset={sheetBottomOffset}
         coveredBottomHeight={coveredBottomHeight}
-        onPressItem={(collectionId) =>
-          router.push({
-            pathname: "/saerok/[collectionId]",
-            params: { collectionId: String(collectionId) },
-          })
-        }
+        onPressItem={(collectionId) => {
+          const { openSaerokDetail } = require("@/lib/navigation");
+          openSaerokDetail(router, collectionId, { from: "map_collections_sheet" });
+        }}
       />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#FFFFFF" },
-  loadingWrap: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  searchWrap: {
-    position: "absolute",
-    left: rs(24),
-    right: rs(24),
-  },
-  researchWrap: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    alignItems: "center",
-  },
-  researchBtn: {
-    paddingHorizontal: rs(16),
-    height: rs(44),
-    borderRadius: rs(20),
-    alignItems: "center",
-    justifyContent: "center",
-    flexDirection: "row",
-    gap: rs(8),
-    backgroundColor: "#FEFEFE",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.5,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  researchText: {
-    color: "#0D0D0D",
-    fontSize: rfs(15),
-    fontWeight: "400",
-  },
-});

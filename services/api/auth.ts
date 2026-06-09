@@ -21,6 +21,10 @@ export const loginKakaoApi = async (
 };
 
 export const refreshAccessTokenApi = async (): Promise<RefreshResponse> => {
-  const res = await axiosPublic.post<RefreshResponse>("/auth/refresh", {});
+  const res = await axiosPublic.post<RefreshResponse>(
+    "/auth/refresh",
+    {},
+    { showOverlay: false } as any,
+  );
   return res.data;
 };

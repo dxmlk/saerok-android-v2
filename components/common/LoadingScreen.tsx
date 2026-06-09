@@ -17,7 +17,7 @@ export default function LoadingScreen({ text = "로딩 중..." }: Props) {
         paddingHorizontal: rs(20),
       }}
     >
-      <ActivityIndicator size="large" />
+      <ActivityIndicator size="large" color="#4190FF" />
       <Text
         style={{ marginTop: rs(12), color: "#6B7280", fontWeight: "700" }}
       >

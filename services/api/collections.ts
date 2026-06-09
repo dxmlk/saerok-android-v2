@@ -1,6 +1,11 @@
 import axiosPrivate from "../axiosPrivate";
 import axiosPublic from "../axiosPublic";
 
+type ApiRequestOptions = {
+  skipApiLoading?: boolean;
+  showOverlay?: boolean;
+};
+
 export interface CreateCollectionRequest {
   birdId: number | null;
   discoveredDate: string; // YYYY-MM-DD
@@ -16,11 +21,15 @@ export interface CreateCollectionResponse {
   collectionId: number;
 }
 
-export const createCollectionApi = async (data: CreateCollectionRequest) => {
+export const createCollectionApi = async (
+  data: CreateCollectionRequest,
+  options?: ApiRequestOptions,
+) => {
   try {
     const res = await axiosPrivate.post<CreateCollectionResponse>(
       "/collections/",
       data,
+      options as any,
     );
     return res.data;
   } catch (e) {
@@ -32,11 +41,13 @@ export const createCollectionApi = async (data: CreateCollectionRequest) => {
 export const getPresignedUrlApi = async (
   collectionId: number,
   contentType: string,
+  options?: ApiRequestOptions,
 ): Promise<{ presignedUrl: string; objectKey: string }> => {
   try {
     const res = await axiosPrivate.post(
       `/collections/${collectionId}/images/presign`,
       { contentType },
+      options as any,
     );
     return res.data;
   } catch (e) {
@@ -49,12 +60,17 @@ export const registerImageMetaApi = async (
   collectionId: number,
   objectKey: string,
   contentType: string,
+  options?: ApiRequestOptions,
 ): Promise<{ imageId: number; url: string }> => {
   try {
-    const res = await axiosPrivate.post(`/collections/${collectionId}/images`, {
-      objectKey,
-      contentType,
-    });
+    const res = await axiosPrivate.post(
+      `/collections/${collectionId}/images`,
+      {
+        objectKey,
+        contentType,
+      },
+      options as any,
+    );
     return res.data;
   } catch (e) {
     console.log("[registerImageMetaApi] ERROR", e);
@@ -178,11 +194,13 @@ export interface PatchCollectionResponse {
 export const patchCollectionApi = async (
   collectionId: number,
   data: PatchCollectionRequest,
+  options?: ApiRequestOptions,
 ): Promise<PatchCollectionResponse> => {
   try {
     const res = await axiosPrivate.patch<PatchCollectionResponse>(
       `/collections/${collectionId}/edit`,
       data,
+      options as any,
     );
     return res.data;
   } catch (e) {
@@ -205,9 +223,13 @@ export const deleteCollectionApi = async (
 export const deleteCollectionImageApi = async (
   collectionId: number,
   imageId: number,
+  options?: ApiRequestOptions,
 ): Promise<void> => {
   try {
-    await axiosPrivate.delete(`/collections/${collectionId}/images/${imageId}`);
+    await axiosPrivate.delete(
+      `/collections/${collectionId}/images/${imageId}`,
+      options as any,
+    );
   } catch (e) {
     console.log("[deleteCollectionImageApi] ERROR", e);
     throw e;
@@ -242,6 +264,8 @@ export interface FetchNearbyCollectionsParams {
   longitude: number;
   radiusMeters: number;
   isMineOnly?: boolean;
+  limit?: number;
+  mode?: "DIST" | "EVEN";
 }
 
 export const fetchNearbyCollections = async ({
@@ -249,12 +273,21 @@ export const fetchNearbyCollections = async ({
   longitude,
   radiusMeters,
   isMineOnly = false,
+  limit,
+  mode,
 }: FetchNearbyCollectionsParams): Promise<NearbyCollectionItem[]> => {
   try {
     const res = await axiosPrivate.get<{ items: NearbyCollectionItem[] }>(
       "/collections/nearby",
       {
-        params: { latitude, longitude, radiusMeters, isMineOnly },
+        params: {
+          latitude,
+          longitude,
+          radiusMeters,
+          isMineOnly,
+          limit,
+          mode,
+        },
       },
     );
     return res.data.items;

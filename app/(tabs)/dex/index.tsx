@@ -1,16 +1,22 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, Text, View, StyleSheet } from "react-native";
+import {
+  FlatList,
+  Pressable,
+  Text,
+  View,
+  StyleSheet,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Animated } from "react-native";
 import { NativeSyntheticEvent, NativeScrollEvent } from "react-native";
 
 import ScrollToTopButton from "@/components/common/ScrollToTopButton";
-import FootprintsLoading from "@/components/common/FootprintsLoading";
 import DexList, { DexItem } from "@/components/dex/DexList";
 import DexMainHeader from "@/components/dex/DexMainHeader";
 import EmptyState from "@/components/dex/EmptyState";
 import FilterHeader, { SelectedFilters } from "@/components/dex/FilterHeader";
+import { useAuth } from "@/hooks/useAuth";
 
 import { toStringArray, toStringValue } from "@/lib/safeParams";
 import {
@@ -19,6 +25,7 @@ import {
   fetchDexItemsApi,
   toggleBookmarkApi,
 } from "@/services/api/birds";
+import { useDexBookmarksState } from "@/states/useDexBookmarksState";
 import { rs } from "@/theme";
 
 const seasonMap: Record<string, string> = {
@@ -50,8 +57,48 @@ const sizeCategoryMap: Record<string, string> = {
 const PAGE_SIZE = 20;
 const DEBUG_FORCE_BOOKMARK_LOADING = false;
 
+function getDexTotalCount(data: any) {
+  const candidates = [
+    data?.totalCount,
+    data?.totalElements,
+    data?.totalItems,
+    data?.total,
+    data?.page?.totalElements,
+    data?.pagination?.totalCount,
+  ];
+  for (const value of candidates) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim()) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return null;
+}
+
+function hasActiveDexFilters(params: any) {
+  return (
+    !!params?.q ||
+    (Array.isArray(params?.seasons) && params.seasons.length > 0) ||
+    (Array.isArray(params?.habitats) && params.habitats.length > 0) ||
+    (Array.isArray(params?.sizeCategories) &&
+      params.sizeCategories.length > 0)
+  );
+}
+
+async function resolveDexTotalCount(params: any, firstPageData: any) {
+  const explicitTotalCount = getDexTotalCount(firstPageData);
+  if (explicitTotalCount != null) return explicitTotalCount;
+  if (!hasActiveDexFilters(params)) return 585;
+
+  const res = await fetchDexItemsApi({ ...params, page: 1, size: 1000 });
+  const birds: DexItem[] = res.data?.birds ?? [];
+  return getDexTotalCount(res.data) ?? birds.length;
+}
+
 export default function DexIndex() {
   const router = useRouter();
+  const { isLoggedIn } = useAuth();
   const sp = useLocalSearchParams<{
     q?: string | string[];
     seasons?: string | string[];
@@ -67,6 +114,7 @@ export default function DexIndex() {
   });
 
   const [items, setItems] = useState<DexItem[]>([]);
+  const [totalBirdCount, setTotalBirdCount] = useState(585);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
 
@@ -74,12 +122,17 @@ export default function DexIndex() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
   const [bookmarkOnly, setBookmarkOnly] = useState(false);
   const [bookmarkItems, setBookmarkItems] = useState<DexItem[]>([]);
   const [bookmarkLoading, setBookmarkLoading] = useState(false);
+  const bookmarkedIds = useDexBookmarksState((state) => state.bookmarkedIds);
+  const setBookmarkedIds = useDexBookmarksState(
+    (state) => state.setBookmarkedIds,
+  );
+  const setBookmarked = useDexBookmarksState((state) => state.setBookmarked);
 
   const listRef = useRef<FlatList<DexItem> | null>(null);
+  const countSeqRef = useRef(0);
   const [showTop, setShowTop] = useState(false);
 
   const scrollY = useRef(new Animated.Value(0)).current;
@@ -116,6 +169,7 @@ export default function DexIndex() {
     setPage(1);
     setHasMore(true);
     setItems([]);
+    setTotalBirdCount(0);
   }, [sp.q, sp.seasons, sp.habitats, sp.sizeCategories]);
 
   const apiFilterParams = useMemo(() => {
@@ -143,12 +197,25 @@ export default function DexIndex() {
 
       const res = await fetchDexItemsApi(params);
       const birds: DexItem[] = res.data?.birds ?? [];
+      const explicitTotalCount = getDexTotalCount(res.data);
+      const countSeq =
+        mode === "replace" ? ++countSeqRef.current : countSeqRef.current;
 
-      setItems((prev) => {
-        if (mode === "replace") return birds;
-        const prevIds = new Set(prev.map((x) => x.id));
-        return [...prev, ...birds.filter((b) => !prevIds.has(b.id))];
-      });
+      if (mode === "replace") {
+        const nextTotalCount = await resolveDexTotalCount(params, res.data);
+        if (countSeq !== countSeqRef.current) return;
+        setItems(birds);
+        setTotalBirdCount(nextTotalCount);
+      } else {
+        setItems((prev) => {
+          const prevIds = new Set(prev.map((x) => x.id));
+          const next = [...prev, ...birds.filter((b) => !prevIds.has(b.id))];
+          if (explicitTotalCount != null) {
+            setTotalBirdCount(explicitTotalCount);
+          }
+          return next;
+        });
+      }
 
       setHasMore(birds.length === PAGE_SIZE);
     } catch (e: any) {
@@ -160,6 +227,10 @@ export default function DexIndex() {
 
   useEffect(() => {
     if (bookmarkOnly) return;
+    setPage(1);
+    setHasMore(true);
+    setItems([]);
+    setTotalBirdCount(0);
     loadPage(1, "replace");
   }, [apiFilterParams, searchTerm, bookmarkOnly]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -174,6 +245,7 @@ export default function DexIndex() {
     setPage(1);
     setHasMore(true);
     setItems([]);
+    setTotalBirdCount(0);
     await loadPage(1, "replace");
     setRefreshing(false);
   };
@@ -186,77 +258,111 @@ export default function DexIndex() {
   };
 
   const loadBookmarks = async () => {
+    if (!isLoggedIn) {
+      setBookmarkedIds([]);
+      return;
+    }
+
     try {
       const res = await fetchBookmarkListApi();
       const list = res.data?.items ?? res.data ?? [];
       const ids = list.map((x: any) => (typeof x === "number" ? x : x.birdId));
-      setBookmarkedIds(new Set(ids));
+      setBookmarkedIds(ids);
     } catch {}
   };
 
+  const loadBookmarkOnlyItems = async () => {
+    if (!isLoggedIn) {
+      setBookmarkItems([]);
+      setBookmarkLoading(false);
+      return;
+    }
+
+    setBookmarkLoading(true);
+    try {
+      const res = await fetchBookmarkListApi();
+      const list = res.data?.items ?? res.data ?? [];
+      const ids: number[] = list.map((x: any) =>
+        typeof x === "number" ? x : x.birdId,
+      );
+
+      const birds = await Promise.all(
+        ids.map(async (id) => {
+          try {
+            const r = await fetchDexDetailApi(id);
+            const b = r.data;
+            const thumb =
+              Array.isArray(b.imageUrls) && b.imageUrls.length > 0
+                ? b.imageUrls[0]
+                : (b.thumbImageUrl ?? "");
+            return {
+              id: b.id,
+              koreanName: b.koreanName,
+              scientificName: b.scientificName,
+              thumbImageUrl: thumb,
+            } as DexItem;
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      setBookmarkItems(birds.filter((x): x is DexItem => x !== null));
+    } catch {
+      setBookmarkItems([]);
+    } finally {
+      setBookmarkLoading(false);
+    }
+  };
+
   useEffect(() => {
+    if (!isLoggedIn) {
+      setBookmarkedIds([]);
+      return;
+    }
+
     loadBookmarks();
-  }, []);
+  }, [isLoggedIn, setBookmarkedIds]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!isLoggedIn) {
+        setBookmarkedIds([]);
+        return;
+      }
+
+      void loadBookmarks();
+      if (bookmarkOnly) {
+        void loadBookmarkOnlyItems();
+      }
+    }, [bookmarkOnly, isLoggedIn, setBookmarkedIds]),
+  );
 
   const toggleBookmark = async (id: number) => {
-    setBookmarkedIds((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+    if (!isLoggedIn) {
+      router.push("/login");
+      return;
+    }
+
+    const wasBookmarked = bookmarkedIds.has(id);
+    setBookmarked(id, !wasBookmarked);
 
     try {
       await toggleBookmarkApi(id);
     } catch {
-      setBookmarkedIds((prev) => {
-        const next = new Set(prev);
-        next.has(id) ? next.delete(id) : next.add(id);
-        return next;
-      });
+      setBookmarked(id, wasBookmarked);
     }
   };
 
   useEffect(() => {
     if (!bookmarkOnly) return;
+    if (!isLoggedIn) {
+      setBookmarkOnly(false);
+      return;
+    }
 
-    (async () => {
-      setBookmarkLoading(true);
-      try {
-        const res = await fetchBookmarkListApi();
-        const list = res.data?.items ?? res.data ?? [];
-        const ids: number[] = list.map((x: any) =>
-          typeof x === "number" ? x : x.birdId,
-        );
-
-        const birds = await Promise.all(
-          ids.map(async (id) => {
-            try {
-              const r = await fetchDexDetailApi(id);
-              const b = r.data;
-              const thumb =
-                Array.isArray(b.imageUrls) && b.imageUrls.length > 0
-                  ? b.imageUrls[0]
-                  : (b.thumbImageUrl ?? "");
-              return {
-                id: b.id,
-                koreanName: b.koreanName,
-                scientificName: b.scientificName,
-                thumbImageUrl: thumb,
-              } as DexItem;
-            } catch {
-              return null;
-            }
-          }),
-        );
-
-        setBookmarkItems(birds.filter((x): x is DexItem => x !== null));
-      } catch {
-        setBookmarkItems([]);
-      } finally {
-        setBookmarkLoading(false);
-      }
-    })();
-  }, [bookmarkOnly]);
+    void loadBookmarkOnlyItems();
+  }, [bookmarkOnly, isLoggedIn]);
 
   const goSearch = () => {
     router.push({
@@ -284,7 +390,7 @@ export default function DexIndex() {
         <Animated.View style={{ opacity: headerOpacity }}>
           <DexMainHeader
             scrollY={scrollY}
-            birdCount={bookmarkOnly ? bookmarkItems.length : items.length}
+            birdCount={bookmarkOnly ? bookmarkItems.length : totalBirdCount}
             onPressBookmark={() => setBookmarkOnly((v) => !v)}
             onPressSearch={goSearch}
             bookmarkActive={bookmarkOnly}
@@ -299,7 +405,12 @@ export default function DexIndex() {
             }
             onResetSearch={() => {
               setSearchTerm("");
-              router.setParams({ q: undefined });
+              router.setParams({
+                q: undefined,
+                seasons: undefined,
+                habitats: undefined,
+                sizeCategories: undefined,
+              });
             }}
           />
         </Animated.View>
@@ -332,15 +443,25 @@ export default function DexIndex() {
 
       {bookmarkOnly ? (
         bookmarkLoading || DEBUG_FORCE_BOOKMARK_LOADING ? (
-          <View
-            style={{
-              flex: 1,
-              alignItems: "center",
-              paddingTop: COLLAPSE_H + rs(30),
-            }}
-          >
-            <FootprintsLoading scale={0.8} />
-          </View>
+          <DexList
+            items={[]}
+            loading
+            refreshing={false}
+            bookmarkedIds={bookmarkedIds}
+            onToggleBookmark={toggleBookmark}
+            listRef={listRef}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              {
+                useNativeDriver: true,
+                listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                  const y = e.nativeEvent.contentOffset.y;
+                  setShowTop(y > rs(700));
+                },
+              },
+            )}
+            contentTopPadding={COLLAPSE_H}
+          />
         ) : bookmarkItems.length === 0 ? (
           <View
             style={{
@@ -353,7 +474,7 @@ export default function DexIndex() {
               bgColor="gray"
               topInset={COLLAPSE_H}
               upperText="스크랩한 새가 없어요!"
-              lowerText="새 카드 오른쪽 위 스크랩 버튼을 눌러 스크랩해보세요."
+              lowerText="스크랩 아이콘을 눌러 좋아하는 새를 저장해보세요!"
             />
           </View>
         ) : (
@@ -377,15 +498,42 @@ export default function DexIndex() {
             contentTopPadding={COLLAPSE_H} //
           />
         )
-      ) : items.length === 0 && !loading ? (
+      ) : loading && items.length === 0 ? (
+        <DexList
+          items={[]}
+          loading
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          bookmarkedIds={bookmarkedIds}
+          onToggleBookmark={toggleBookmark}
+          listRef={listRef}
+          onEndReached={onEndReached}
+          onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            {
+              useNativeDriver: true,
+              listener: (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+                const y = e.nativeEvent.contentOffset.y;
+                setShowTop(y > rs(700));
+              },
+            },
+          )}
+          contentTopPadding={COLLAPSE_H}
+        />
+      ) : items.length === 0 ? (
         <View
           style={{
             flex: 1,
             alignItems: "center",
-            paddingTop: COLLAPSE_H + rs(30),
+            marginTop: rs(27),
           }}
         >
-          <FootprintsLoading scale={0.8} />
+          <EmptyState
+            bgColor="gray"
+            topInset={COLLAPSE_H}
+            upperText="해당되는 항목이 없어요!"
+            lowerText="다른 검색어나 필터로 다시 찾아보세요."
+          />
         </View>
       ) : (
         <DexList

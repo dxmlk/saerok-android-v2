@@ -49,15 +49,24 @@ export async function registerPushTokenToServer() {
 
   const tokenRes = await Notifications.getExpoPushTokenAsync({ projectId });
   const expoPushToken = tokenRes.data;
+  console.log("[Push] expoPushToken", expoPushToken);
   if (!expoPushToken || expoPushToken === lastRegisteredToken) return;
 
   const deviceId = await getOrCreateNotificationDeviceId();
+  console.log("[Push] upsertNotificationTokenApi", {
+    deviceId,
+    token: expoPushToken,
+    platform: Platform.OS === "ios" ? "IOS" : "ANDROID",
+  });
   await upsertNotificationTokenApi({
     deviceId,
     token: expoPushToken,
     platform: Platform.OS === "ios" ? "IOS" : "ANDROID",
   });
+  console.log("[Push] token registration success", {
+    deviceId,
+    token: expoPushToken,
+  });
 
   lastRegisteredToken = expoPushToken;
 }
-

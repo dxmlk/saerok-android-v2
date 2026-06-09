@@ -13,19 +13,14 @@ type Props = {
 export default function EmptyState({ bgColor, upperText, lowerText }: Props) {
   const isWhite = bgColor === "white";
   return (
-    <View
-      style={[
-        styles.wrap,
-        { backgroundColor: isWhite ? "#FFFFFF" : "#F2F2F2" },
-      ]}
-    >
+    <View style={[styles.wrap, { backgroundColor: "transparent" }]}>
       <Text style={styles.upper}>{upperText}</Text>
       <Text style={styles.lower}>{lowerText}</Text>
       <View style={styles.imgRow}>
         <SaerokImage
           width={rs(116)}
           height={rs(128)}
-          color={isWhite ? "#F2F2F2" : "#FFFFFF"}
+          color={isWhite ? "#F7F7F7" : "#FFFFFF"}
         />
       </View>
     </View>

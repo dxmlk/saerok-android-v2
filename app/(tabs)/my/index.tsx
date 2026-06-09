@@ -17,6 +17,14 @@ import MenuItem from "@/components/my/MenuItem";
 import NotificationIcon from "@/assets/icon/icon/NotificationIcon";
 import { rs } from "@/theme";
 
+const LOGO_BASE_WIDTH = 263;
+const LOGO_BASE_HEIGHT = 290;
+const MY_LOGO_SCALE = 1;
+const MY_LOGO_WIDTH = LOGO_BASE_WIDTH * MY_LOGO_SCALE;
+const MY_LOGO_HEIGHT = LOGO_BASE_HEIGHT * MY_LOGO_SCALE;
+const MY_LOGO_VISIBLE_WIDTH = 1;
+const MY_LOGO_VISIBLE_HEIGHT = 1;
+
 export default function MyHome() {
   const router = useRouter();
   const { isLoggedIn, user, loading } = useAuth();
@@ -41,7 +49,11 @@ export default function MyHome() {
   return (
     <View style={styles.root}>
       <View pointerEvents="none" style={styles.logoBg}>
-        <LogoCutIcon width={rs(175)} height={rs(211)} />
+        <LogoCutIcon
+          width={rs(MY_LOGO_WIDTH)}
+          height={rs(MY_LOGO_HEIGHT)}
+          color="#CDDDF3"
+        />
       </View>
 
       <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
@@ -94,18 +106,21 @@ export default function MyHome() {
                 onPress={() => router.push("/my/notification-settings")}
               />
 
-              {/* TODO: feedback 페이지 만들기 */}
               <MenuItem
                 icon={<DocumentIcon color="#F6C343" />}
                 label="의견 보내기"
                 isActive
                 labelColor="#111111"
-                onPress={() => router.push("/my/feedback")}
+                onPress={() =>
+                  openExternal(
+                    "https://docs.google.com/forms/d/e/1FAIpQLSeUMFVcG0L1OYU5_fBl8SWHQQOExdonQAU1cLtbyp7Z5Rp_ew/viewform?usp=dialog",
+                  )
+                }
               />
 
               <MenuItem
                 icon={<BellIcon color="#F6C343" />}
-                label="새록 소식 / 이용 가이드"
+                label="새록 소식 및 이용 가이드"
                 isActive
                 labelColor="#111111"
                 onPress={() =>
@@ -153,8 +168,8 @@ const styles = StyleSheet.create({
 
   logoBg: {
     position: "absolute",
-    top: 0,
-    right: 0,
+    top: -rs(MY_LOGO_HEIGHT * (1.2 - MY_LOGO_VISIBLE_HEIGHT)),
+    right: -rs(MY_LOGO_WIDTH * (1.3 - MY_LOGO_VISIBLE_WIDTH)),
     zIndex: 0,
     elevation: 0,
   },

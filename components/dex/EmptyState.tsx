@@ -24,7 +24,7 @@ export default function EmptyState({
       style={[
         styles.wrap,
         {
-          backgroundColor: isWhite ? "#FFFFFF" : "#F2F2F2",
+          backgroundColor: "transparent",
           paddingTop: topInset + rs(28), //
         },
       ]}

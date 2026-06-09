@@ -11,7 +11,7 @@ export default function NoticeIcon({
   return (
     <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
       <Path
-        d="M12 18L12 10"
+        d="M12 18L12 11"
         stroke={color}
         strokeWidth={2}
         strokeLinecap="round"

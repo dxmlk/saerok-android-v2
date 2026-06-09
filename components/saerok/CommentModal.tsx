@@ -1,21 +1,28 @@
-﻿import NoticeIcon from "@/assets/icon/notice/NoticeIcon";
+import NoticeIcon from "@/assets/icon/notice/NoticeIcon";
+import MoreVerticalIcon from "@/assets/icon/saerok/MoreVerticalIcon";
 import EmptyState from "@/components/common/EmptyState";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
+import AnimatedModalContent from "@/components/common/AnimatedModalContent";
+import ProfileAvatar from "@/components/my/ProfileAvatar";
 import CommentInputBar from "@/components/saerok/CommentInputBar";
 import { font, rfs, rs } from "@/theme";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   Animated,
   Dimensions,
   Easing,
-  Image,
   Keyboard,
+  LayoutChangeEvent,
   Modal,
   PanResponder,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
+  type GestureResponderEvent,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -26,8 +33,11 @@ export type CommentBoxProps = {
   content: string;
   isMine?: boolean;
   createdAt?: string;
+  updatedAt?: string;
   thumbnailProfileImageUrl?: string | null;
   profileImageUrl?: string | null;
+  parentId?: number | null;
+  replies?: CommentBoxProps[];
 };
 
 type Props = {
@@ -35,29 +45,267 @@ type Props = {
   onClose: () => void;
   items: CommentBoxProps[];
   onDelete: (commentId: number) => Promise<void> | void;
+  onUpdate?: (commentId: number, content: string) => Promise<void> | void;
   headerCount: number;
   onSubmit: (content: string) => Promise<void> | void;
   inputPlaceholder?: string;
+  authorNickname?: string | null;
 };
 
-type ActionTarget = {
-  commentId: number;
-  isMine: boolean;
+type ReplySelection = {
+  activeId: number;
+  parentId: number;
   nickname: string;
 };
 
-function elapsedLabel(createdAt?: string) {
+type OptionTarget = {
+  commentId: number;
+  content: string;
+};
+
+const OPTION_MENU_WIDTH = 100;
+const OPTION_ROW_HEIGHT = 48;
+const INPUT_BAR_HEIGHT = rs(80);
+
+function formatElapsed(createdAt?: string | null) {
   if (!createdAt) return "";
   const ts = new Date(createdAt).getTime();
   if (!Number.isFinite(ts)) return "";
-  const diffMin = Math.floor((Date.now() - ts) / 60000);
-  if (diffMin < 60) return `${Math.max(0, diffMin)}분 전`;
-  const diffHour = Math.floor(diffMin / 60);
-  if (diffHour < 24) return `${diffHour}시간 전`;
-  const diffDay = Math.floor(diffHour / 24);
-  if (diffDay < 31) return `${diffDay}일 전`;
-  const diffMonth = Math.floor(diffDay / 30);
-  return `${Math.max(1, diffMonth)}달 전`;
+
+  const diff = Date.now() - ts;
+  const minute = 60 * 1000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+
+  if (diff < minute) return "방금 전";
+  if (diff < hour) return `${Math.floor(diff / minute)}분 전`;
+  if (diff < day) return `${Math.floor(diff / hour)}시간 전`;
+  return `${Math.floor(diff / day)}일 전`;
+}
+
+function buildThreadedComments(items: CommentBoxProps[]) {
+  const baseItems = items.map((item) => ({
+    ...item,
+    replies: item.replies ? [...item.replies] : [],
+  }));
+  const byId = new Map<number, CommentBoxProps & { replies: CommentBoxProps[] }>();
+  baseItems.forEach((item) => byId.set(item.commentId, item));
+
+  const roots: Array<CommentBoxProps & { replies: CommentBoxProps[] }> = [];
+
+  baseItems.forEach((item) => {
+    if (item.parentId && byId.has(item.parentId)) {
+      byId.get(item.parentId)!.replies.push(item);
+      return;
+    }
+    roots.push(item);
+  });
+
+  return roots;
+}
+
+function OptionMenu({
+  visible,
+  anchorX,
+  anchorY,
+  onClose,
+  onDelete,
+}: {
+  visible: boolean;
+  anchorX: number;
+  anchorY: number;
+  onClose: () => void;
+  onDelete: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const scale = React.useRef(new Animated.Value(0.92)).current;
+  const opacity = React.useRef(new Animated.Value(0)).current;
+  const [mounted, setMounted] = React.useState(visible);
+
+  React.useEffect(() => {
+    if (visible) {
+      setMounted(true);
+      scale.setValue(0.92);
+      opacity.setValue(0);
+      Animated.parallel([
+        Animated.timing(scale, {
+          toValue: 1,
+          duration: 160,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 140,
+          useNativeDriver: true,
+        }),
+      ]).start();
+      return;
+    }
+
+    if (!mounted) return;
+    Animated.parallel([
+      Animated.timing(scale, {
+        toValue: 0.92,
+        duration: 140,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+    ]).start(() => setMounted(false));
+  }, [mounted, opacity, scale, visible]);
+
+  if (!mounted) return null;
+
+  return (
+    <Modal
+      transparent
+      visible={mounted}
+      animationType="none"
+      onRequestClose={onClose}
+    >
+      <Pressable style={styles.optionOverlay} onPress={onClose}>
+        <Animated.View
+          style={[
+            styles.optionCard,
+            {
+              left: Math.max(rs(4), anchorX - rs(OPTION_MENU_WIDTH) + rs(8)),
+              top: Math.max(insets.top + rs(8), anchorY + rs(8)),
+              opacity,
+              transform: [{ scale }],
+            },
+          ]}
+        >
+          <Pressable style={styles.optionInner} onPress={() => {}}>
+            <TouchableOpacity style={styles.optionRow} onPress={onDelete}>
+              <Text style={styles.optionText}>삭제하기</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Animated.View>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function CommentBlock({
+  item,
+  authorNickname,
+  isReply = false,
+  isReplyActive,
+  onCaptureRef,
+  onSelectReply,
+  onOpenMenu,
+}: {
+  item: CommentBoxProps;
+  authorNickname?: string | null;
+  isReply?: boolean;
+  isReplyActive: boolean;
+  onCaptureRef: (commentId: number, node: View | null) => void;
+  onSelectReply: (selection: ReplySelection) => void;
+  onOpenMenu: (event: GestureResponderEvent, target: OptionTarget) => void;
+}) {
+  const router = useRouter();
+  const isAuthor =
+    !!authorNickname?.trim() &&
+    authorNickname.trim() === item.nickname.trim();
+
+  return (
+    <View
+      ref={(node) => onCaptureRef(item.commentId, node)}
+      onLayout={(_event: LayoutChangeEvent) => {}}
+    >
+      <Pressable
+        style={[
+          styles.commentCard,
+          isReply && styles.replyCard,
+          isReplyActive && styles.commentCardActive,
+        ]}
+        onPress={() =>
+          onSelectReply({
+            activeId: item.commentId,
+            parentId: item.parentId ?? item.commentId,
+            nickname: item.nickname,
+          })
+        }
+      >
+        <View style={styles.commentTopRow}>
+          <Pressable
+            style={styles.commentAvatarWrap}
+            disabled={!item.userId}
+            onPress={(event) => {
+              event.stopPropagation();
+              if (!item.userId) return;
+              router.push(`/saerok/profile/${item.userId}`);
+            }}
+          >
+            <ProfileAvatar
+              size={rs(29)}
+              imageUrl={item.profileImageUrl || item.thumbnailProfileImageUrl}
+              seed={item.nickname || String(item.userId)}
+              borderWidth={0}
+            />
+          </Pressable>
+
+          <View style={styles.commentMain}>
+            <View style={styles.commentHeaderRow}>
+              <View style={styles.commentHeaderLeft}>
+                <Text style={styles.commentNickname}>{item.nickname}</Text>
+                {isAuthor ? (
+                  <View style={styles.authorBadge}>
+                    <Text style={styles.authorBadgeText}>글쓴이</Text>
+                  </View>
+                ) : null}
+              </View>
+
+              <View style={styles.commentHeaderRight}>
+                {!isReply ? (
+                  <Pressable
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      onSelectReply({
+                        activeId: item.commentId,
+                        parentId: item.commentId,
+                        nickname: item.nickname,
+                      });
+                    }}
+                  >
+                    <Text style={styles.replyActionText}>답글달기</Text>
+                  </Pressable>
+                ) : null}
+
+                {item.isMine ? (
+                  <TouchableOpacity
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                    onPress={(event) => {
+                      event.stopPropagation();
+                      onOpenMenu(event, {
+                        commentId: item.commentId,
+                        content: item.content,
+                      });
+                    }}
+                  >
+                    <MoreVerticalIcon
+                      width={rs(17)}
+                      height={rs(17)}
+                      color="#979797"
+                    />
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
+
+            <Text style={styles.commentContent}>{item.content}</Text>
+            <Text style={styles.commentMetaText}>
+              {formatElapsed(item.createdAt)}
+            </Text>
+          </View>
+        </View>
+      </Pressable>
+    </View>
+  );
 }
 
 export default function CommentModal({
@@ -68,23 +316,51 @@ export default function CommentModal({
   headerCount,
   onSubmit,
   inputPlaceholder,
+  authorNickname,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const inputRef = React.useRef<TextInput>(null);
+  const scrollRef = React.useRef<ScrollView>(null);
+  const commentRefsRef = React.useRef<Record<number, View | null>>({});
+  const currentScrollYRef = React.useRef(0);
+  const previousScrollYRef = React.useRef<number | null>(null);
+  const replySelectionRef = React.useRef<ReplySelection | null>(null);
+
   const screenH = Dimensions.get("window").height;
   const sheetHeight = Math.floor(screenH * 0.95);
-  const translateY = React.useRef(new Animated.Value(sheetHeight + rs(32))).current;
-  const startY = React.useRef(0);
-  const [keyboardHeight, setKeyboardHeight] = React.useState(0);
-  const [actionTarget, setActionTarget] = React.useState<ActionTarget | null>(null);
-
-  const halfY = Math.max(0, Math.floor(sheetHeight - screenH * 0.64));
+  const halfVisibleHeight = Math.floor(screenH * 0.64);
   const closeY = sheetHeight + rs(32);
+  const halfY = Math.max(0, Math.floor(sheetHeight - screenH * 0.64));
+
+  const translateY = React.useRef(new Animated.Value(closeY)).current;
+  const startY = React.useRef(0);
+  const openedAtRef = React.useRef(Date.now());
+
+  const [sheetSnap, setSheetSnap] = React.useState<"half" | "full">("half");
+  const [keyboardHeight, setKeyboardHeight] = React.useState(0);
+  const [replySelection, setReplySelection] =
+    React.useState<ReplySelection | null>(null);
+  const [optionVisible, setOptionVisible] = React.useState(false);
+  const [optionAnchor, setOptionAnchor] = React.useState({ x: 0, y: 0 });
+  const [optionTarget, setOptionTarget] = React.useState<OptionTarget | null>(
+    null,
+  );
+  const [deleteVisible, setDeleteVisible] = React.useState(false);
+  const replyScrollSpacer = Math.floor(Dimensions.get("window").height * 0.45);
+  const extraVisiblePadding = rs(76);
+
+  const threadedItems = React.useMemo(() => buildThreadedComments(items), [items]);
+
+  React.useEffect(() => {
+    replySelectionRef.current = replySelection;
+  }, [replySelection]);
 
   const animateTo = React.useCallback(
     (to: number, done?: () => void) => {
+      setSheetSnap(to === 0 ? "full" : "half");
       Animated.timing(translateY, {
         toValue: to,
-        duration: 210,
+        duration: 240,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start(() => done?.());
@@ -92,38 +368,84 @@ export default function CommentModal({
     [translateY],
   );
 
-  const requestClose = React.useCallback(() => {
+  const cancelReplyMode = React.useCallback(() => {
+    const prevScrollY = previousScrollYRef.current;
+    setReplySelection(null);
+    inputRef.current?.blur();
     Keyboard.dismiss();
+    if (prevScrollY != null) {
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ y: prevScrollY, animated: true });
+      });
+    }
+    previousScrollYRef.current = null;
+  }, []);
+
+  const requestClose = React.useCallback(() => {
+    cancelReplyMode();
     animateTo(closeY, onClose);
-  }, [animateTo, closeY, onClose]);
+  }, [animateTo, cancelReplyMode, closeY, onClose]);
 
   React.useEffect(() => {
     if (!visible) return;
+    openedAtRef.current = Date.now();
     translateY.setValue(closeY);
     requestAnimationFrame(() => animateTo(halfY));
   }, [animateTo, closeY, halfY, translateY, visible]);
 
   React.useEffect(() => {
+    if (!visible) return;
+
     const showEvt = Keyboard.addListener("keyboardDidShow", (e) => {
       const end = e.endCoordinates;
       const byHeight = end?.height ?? 0;
       const windowHeight = Dimensions.get("window").height;
       const byScreenYOnWindow =
-        typeof end?.screenY === "number" ? Math.max(0, windowHeight - end.screenY) : 0;
-      // Galaxy keyboard options (emoji/suggestion strip) can change real covered area.
-      // Use the larger value between reported keyboard height and screenY-derived overlap.
+        typeof end?.screenY === "number"
+          ? Math.max(0, windowHeight - end.screenY)
+          : 0;
       const resolved = Math.max(byHeight, byScreenYOnWindow);
       setKeyboardHeight(resolved);
       animateTo(0);
+
+      if (replySelectionRef.current) {
+        requestAnimationFrame(() => {
+          const node =
+            commentRefsRef.current[replySelectionRef.current!.activeId];
+          node?.measureInWindow?.((_, y, __, h) => {
+            const visibleBottom =
+              windowHeight - resolved - extraVisiblePadding;
+            const hiddenBottom = y + h - visibleBottom;
+            if (hiddenBottom > 0) {
+              scrollRef.current?.scrollTo({
+                y: Math.max(0, currentScrollYRef.current + hiddenBottom),
+                animated: true,
+              });
+            }
+          });
+        });
+      }
     });
+
     const hideEvt = Keyboard.addListener("keyboardDidHide", () => {
       setKeyboardHeight(0);
+      if (replySelectionRef.current) {
+        const prevScrollY = previousScrollYRef.current;
+        setReplySelection(null);
+        if (prevScrollY != null) {
+          requestAnimationFrame(() => {
+            scrollRef.current?.scrollTo({ y: prevScrollY, animated: true });
+          });
+        }
+        previousScrollYRef.current = null;
+      }
     });
+
     return () => {
       showEvt.remove();
       hideEvt.remove();
     };
-  }, [animateTo, screenH]);
+  }, [animateTo, extraVisiblePadding, visible]);
 
   const finishByPosition = React.useCallback(
     (dy: number, vy: number) => {
@@ -162,18 +484,64 @@ export default function CommentModal({
     [closeY, finishByPosition, translateY],
   );
 
-  const openedAtRef = React.useRef(Date.now());
-  React.useEffect(() => {
-    if (!visible) return;
-    openedAtRef.current = Date.now();
-  }, [visible]);
+  const activateReplyMode = React.useCallback((selection: ReplySelection) => {
+    if (previousScrollYRef.current == null) {
+      previousScrollYRef.current = currentScrollYRef.current;
+    }
+    setReplySelection(selection);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  }, []);
+
+  const openMenu = React.useCallback(
+    (event: GestureResponderEvent, target: OptionTarget) => {
+      const { pageX, pageY } = event.nativeEvent;
+      setOptionAnchor({ x: pageX, y: pageY });
+      setOptionTarget(target);
+      setOptionVisible(true);
+    },
+    [],
+  );
+
+  const handleDelete = React.useCallback(() => {
+    setOptionVisible(false);
+    setDeleteVisible(true);
+  }, []);
+
+  const confirmDelete = React.useCallback(async () => {
+    const target = optionTarget;
+    setDeleteVisible(false);
+    if (!target) return;
+    await onDelete(target.commentId);
+  }, [onDelete, optionTarget]);
+
+  const handleSubmit = React.useCallback(
+    async (content: string) => {
+      await onSubmit(content);
+      const prevScrollY = previousScrollYRef.current;
+      setReplySelection(null);
+      inputRef.current?.blur();
+      Keyboard.dismiss();
+      if (prevScrollY != null) {
+        requestAnimationFrame(() => {
+          scrollRef.current?.scrollTo({ y: prevScrollY, animated: true });
+        });
+      }
+      previousScrollYRef.current = null;
+    },
+    [onSubmit],
+  );
 
   if (!visible) return null;
 
-  const isMine = !!actionTarget?.isMine;
-
   return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={requestClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={requestClose}
+    >
       <Pressable
         style={styles.dim}
         onPress={() => {
@@ -188,7 +556,6 @@ export default function CommentModal({
           {
             height: sheetHeight,
             transform: [{ translateY }],
-            paddingBottom: 0,
           },
         ]}
       >
@@ -201,55 +568,88 @@ export default function CommentModal({
             <Text style={styles.title}>댓글</Text>
             <Text style={styles.count}>{headerCount}</Text>
           </View>
-          <Pressable onPress={requestClose} style={styles.closeBtn} accessibilityRole="button">
+          <TouchableOpacity
+            onPress={requestClose}
+            style={styles.closeBtn}
+            accessibilityRole="button"
+          >
             <Text style={styles.closeText}>×</Text>
-          </Pressable>
+          </TouchableOpacity>
         </View>
 
-        <ScrollView
-          contentContainerStyle={[styles.list, { paddingBottom: rs(118) + insets.bottom }]}
-          showsVerticalScrollIndicator={false}
-        >
-          {items.length ? (
-            items.map((c) => {
-              const uri = c.thumbnailProfileImageUrl || c.profileImageUrl || "";
-              return (
-                <View key={c.commentId} style={styles.item}>
-                  <View style={styles.itemHead}>
-                    <View style={styles.authorRow}>
-                      <View style={styles.avatarWrap}>
-                        {uri ? <Image source={{ uri }} style={styles.avatar} /> : <View style={styles.avatarFallback} />}
-                      </View>
-                      <Text style={styles.nickname}>{c.nickname}</Text>
-                      <Text style={styles.time}>{elapsedLabel(c.createdAt)}</Text>
-                    </View>
-                    <Pressable
-                      onPress={() =>
-                        setActionTarget({
-                          commentId: c.commentId,
-                          isMine: !!c.isMine,
-                          nickname: c.nickname,
-                        })
+        <Pressable style={styles.bodyArea} onPress={cancelReplyMode}>
+          <ScrollView
+            ref={scrollRef}
+            style={[
+              styles.scroll,
+              {
+                height:
+                  sheetSnap === "full"
+                    ? sheetHeight - rs(24) - rs(62)
+                    : halfVisibleHeight - rs(24) - rs(62),
+              },
+            ]}
+            contentContainerStyle={[
+              styles.list,
+              {
+                paddingBottom:
+                  INPUT_BAR_HEIGHT +
+                  insets.bottom +
+                  rs(16) +
+                  (replySelection ? replyScrollSpacer : 0),
+              },
+            ]}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+            onScroll={(event) => {
+              currentScrollYRef.current = event.nativeEvent.contentOffset.y;
+            }}
+            scrollEventThrottle={16}
+          >
+            {threadedItems.length ? (
+              threadedItems.map((item) => (
+                <View key={item.commentId} style={styles.commentGroup}>
+                  <CommentBlock
+                    item={item}
+                    authorNickname={authorNickname}
+                    isReplyActive={replySelection?.activeId === item.commentId}
+                    onCaptureRef={(commentId, node) => {
+                      commentRefsRef.current[commentId] = node;
+                    }}
+                    onSelectReply={activateReplyMode}
+                    onOpenMenu={openMenu}
+                  />
+
+                  {item.replies?.map((reply) => (
+                    <CommentBlock
+                      key={reply.commentId}
+                      item={reply}
+                      authorNickname={authorNickname}
+                      isReply
+                      isReplyActive={
+                        replySelection?.activeId === reply.commentId
                       }
-                      style={styles.moreBtn}
-                      hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                      accessibilityRole="button"
-                    >
-                      <Text style={styles.more}>⋮</Text>
-                    </Pressable>
-                  </View>
-
-                  <Text style={styles.content}>{c.content}</Text>
+                      onCaptureRef={(commentId, node) => {
+                        commentRefsRef.current[commentId] = node;
+                      }}
+                      onSelectReply={activateReplyMode}
+                      onOpenMenu={openMenu}
+                    />
+                  ))}
                 </View>
-              );
-            })
-          ) : (
-            <View style={styles.emptyWrap}>
-              <EmptyState bgColor="gray" upperText="아직 댓글이 없어요!" lowerText="댓글을 남겨보세요." />
-            </View>
-          )}
-        </ScrollView>
-
+              ))
+            ) : (
+              <View style={styles.emptyStateWrap}>
+                <EmptyState
+                  bgColor="gray"
+                  upperText="아직 댓글이 없어요."
+                  lowerText="가장 먼저 댓글을 남겨보세요."
+                />
+              </View>
+            )}
+          </ScrollView>
+        </Pressable>
       </Animated.View>
 
       <View
@@ -264,56 +664,67 @@ export default function CommentModal({
         <View
           style={[
             styles.inputDockInner,
-            { paddingBottom: insets.bottom + rs(18) },
+            { paddingBottom: keyboardHeight > 0 ? rs(24) : Math.max(rs(24), insets.bottom) },
           ]}
         >
-          <CommentInputBar placeholder={inputPlaceholder} onSubmit={onSubmit} />
+          <CommentInputBar
+            ref={inputRef}
+            placeholder={
+              replySelection
+                ? `${replySelection.nickname}님에게 댓글 남기기`
+                : inputPlaceholder
+            }
+            onSubmit={handleSubmit}
+          />
         </View>
       </View>
 
+      <OptionMenu
+        visible={optionVisible}
+        anchorX={optionAnchor.x}
+        anchorY={optionAnchor.y}
+        onClose={() => setOptionVisible(false)}
+        onDelete={handleDelete}
+      />
+
       <Modal
         transparent
-        visible={!!actionTarget}
+        visible={deleteVisible}
         animationType="fade"
-        onRequestClose={() => setActionTarget(null)}
+        onRequestClose={() => setDeleteVisible(false)}
       >
-        <Pressable style={styles.backdrop} onPress={() => setActionTarget(null)}>
-          <Pressable style={styles.alertCard} onPress={() => {}}>
+        <Pressable
+          style={styles.alertBackdrop}
+          onPress={() => setDeleteVisible(false)}
+        >
+          <AnimatedModalContent visible={deleteVisible}>
+            <Pressable style={styles.alertCard} onPress={() => {}}>
             <NoticeIcon width={rs(30)} height={rs(30)} color="#91BFFF" />
 
             <View style={styles.alertTextBlock}>
-              <Text style={styles.alertMainText}>
-                {isMine ? "댓글을 삭제하시겠어요?" : "댓글을 신고하시겠어요?"}
-              </Text>
+              <Text style={styles.alertMainText}>댓글을 삭제하시겠어요?</Text>
               <Text style={styles.alertSubText}>
-                {isMine
-                  ? "삭제된 댓글은 복구할 수 없어요."
-                  : "커뮤니티 가이드에 따라\n신고 사유에 해당하는지 검토 후 처리돼요."}
+                삭제된 댓글은 복구할 수 없어요.
               </Text>
             </View>
 
             <View style={styles.alertBtnRow}>
-              <Pressable style={styles.leftBtn} onPress={() => setActionTarget(null)}>
-                <Text style={styles.leftBtnText}>취소</Text>
+              <Pressable
+                style={styles.alertLeftBtn}
+                onPress={() => setDeleteVisible(false)}
+              >
+                <Text style={styles.alertLeftBtnText}>취소</Text>
               </Pressable>
 
-              <Pressable
-                style={styles.rightBtn}
-                onPress={async () => {
-                  const target = actionTarget;
-                  setActionTarget(null);
-                  if (!target) return;
-                  if (target.isMine) {
-                    await onDelete(target.commentId);
-                  }
-                }}
-              >
-                <Text style={styles.rightBtnText}>{isMine ? "삭제하기" : "신고하기"}</Text>
+              <Pressable style={styles.alertRightBtn} onPress={confirmDelete}>
+                <Text style={styles.alertRightBtnText}>삭제하기</Text>
               </Pressable>
             </View>
-          </Pressable>
+            </Pressable>
+          </AnimatedModalContent>
         </Pressable>
       </Modal>
+
     </Modal>
   );
 }
@@ -328,7 +739,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    minHeight: "50%",
     backgroundColor: "#F2F2F2",
     borderTopLeftRadius: rs(20),
     borderTopRightRadius: rs(20),
@@ -351,6 +761,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+    backgroundColor: "#F2F2F2",
   },
   titleRow: {
     flexDirection: "row",
@@ -382,77 +793,108 @@ const styles = StyleSheet.create({
     fontSize: rfs(24),
     lineHeight: rfs(24),
   },
+  bodyArea: {
+    flex: 1,
+    backgroundColor: "#F2F2F2",
+  },
+  scroll: {
+    flex: 1,
+    backgroundColor: "#F2F2F2",
+  },
   list: {
     paddingHorizontal: rs(24),
     paddingTop: rs(8),
+  },
+  commentGroup: {
+    marginBottom: rs(7),
     gap: rs(7),
   },
-  item: {
-    borderRadius: rs(20),
+  commentCard: {
     backgroundColor: "#FEFEFE",
-    paddingHorizontal: rs(14),
-    paddingVertical: rs(12),
+    borderRadius: rs(20),
+    paddingHorizontal: rs(12),
+    paddingTop: rs(10),
+    paddingBottom: rs(12),
   },
-  itemHead: {
+  commentCardActive: {
+    backgroundColor: "#EAEAEA",
+  },
+  replyCard: {
+    backgroundColor: "#F2F2F2",
+    marginLeft: rs(24),
+  },
+  commentTopRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: rs(8),
+  },
+  commentAvatarWrap: {
+    width: rs(29),
+    height: rs(29),
+    borderRadius: rs(14.5),
+    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
+  },
+  commentMain: {
+    flex: 1,
+    minWidth: 0,
+  },
+  commentHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: rs(8),
   },
-  authorRow: {
+  commentHeaderLeft: {
     flexDirection: "row",
     alignItems: "center",
-    gap: rs(6),
+    gap: rs(5),
     flex: 1,
+    minWidth: 0,
   },
-  avatarWrap: {
-    width: rs(25),
-    height: rs(25),
-    borderRadius: rs(16),
-    borderWidth: rs(1),
-    borderColor: "#F2F2F2",
-    overflow: "hidden",
-    backgroundColor: "#E5E7EB",
-  },
-  avatar: {
-    width: "100%",
-    height: "100%",
-  },
-  avatarFallback: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#E5E7EB",
-  },
-  nickname: {
+  commentNickname: {
     color: "#0D0D0D",
-    fontFamily: font.regular,
+    fontFamily: font.haru,
     fontSize: rfs(15),
+    lineHeight: rfs(22),
     fontWeight: "400",
-    lineHeight: rfs(20),
   },
-  time: {
+  authorBadge: {
+    paddingHorizontal: rs(3),
+    paddingVertical: rs(1),
+    borderRadius: rs(5),
+    backgroundColor: "#4190FF",
+  },
+  authorBadgeText: {
+    color: "#FEFEFE",
+    fontSize: rfs(12),
+    lineHeight: rfs(16),
+    fontWeight: "700",
+  },
+  commentHeaderRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(10),
+    marginLeft: rs(10),
+  },
+  replyActionText: {
     color: "#979797",
     fontSize: rfs(12),
     lineHeight: rfs(16),
+    fontWeight: "400",
   },
-  more: {
-    color: "#979797",
-    fontSize: rfs(18),
-    lineHeight: rfs(18),
-  },
-  moreBtn: {
-    paddingHorizontal: rs(8),
-    paddingVertical: rs(8),
-    marginRight: -rs(4),
-  },
-  content: {
+  commentContent: {
+    marginTop: rs(5),
     color: "#0D0D0D",
-    fontSize: rfs(14),
+    fontSize: rfs(15),
     lineHeight: rfs(20),
+    fontWeight: "400",
   },
-  emptyWrap: {
-    minHeight: rs(260),
-    justifyContent: "center",
+  commentMetaText: {
+    marginTop: rs(5),
+    color: "#979797",
+    fontSize: rfs(12),
+    lineHeight: rfs(16),
+    fontWeight: "400",
   },
   inputDock: {
     position: "absolute",
@@ -461,9 +903,45 @@ const styles = StyleSheet.create({
     zIndex: 40,
   },
   inputDockInner: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "transparent",
   },
-  backdrop: {
+  optionOverlay: {
+    flex: 1,
+  },
+  optionCard: {
+    position: "absolute",
+    width: rs(OPTION_MENU_WIDTH),
+    borderRadius: rs(14),
+    backgroundColor: "#FEFEFE",
+    borderWidth: 1,
+    borderColor: "#F2F2F2",
+    shadowColor: "#000000",
+    shadowOpacity: 0.12,
+    shadowRadius: rs(10),
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
+  optionInner: {
+    borderRadius: rs(14),
+    backgroundColor: "#FEFEFE",
+    overflow: "hidden",
+  },
+  optionRow: {
+    height: rs(OPTION_ROW_HEIGHT),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  optionText: {
+    color: "#0D0D0D",
+    fontSize: rfs(16),
+    lineHeight: rfs(20),
+    fontWeight: "400",
+  },
+  optionDivider: {
+    height: 1,
+    backgroundColor: "#F2F2F2",
+  },
+  alertBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.40)",
     alignItems: "center",
@@ -479,7 +957,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: rs(15),
   },
-  alertTextBlock: { alignItems: "center", gap: rs(6) },
+  alertTextBlock: {
+    alignItems: "center",
+    gap: rs(6),
+  },
   alertMainText: {
     textAlign: "center",
     color: "#111827",
@@ -497,7 +978,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: rs(8),
   },
-  leftBtn: {
+  alertLeftBtn: {
     flex: 1,
     height: rs(42),
     borderRadius: rs(15),
@@ -505,13 +986,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  leftBtnText: {
+  alertLeftBtnText: {
     color: "#FEFEFE",
     fontSize: rfs(15),
     fontWeight: "600",
     lineHeight: rfs(18),
   },
-  rightBtn: {
+  alertRightBtn: {
     flex: 1,
     height: rs(42),
     borderRadius: rs(15),
@@ -521,10 +1002,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  rightBtnText: {
+  alertRightBtnText: {
     color: "#D90000",
     fontSize: rfs(15),
     fontWeight: "600",
     lineHeight: rfs(18),
+  },
+  emptyStateWrap: {
+    minHeight: rs(240),
+    justifyContent: "center",
   },
 });

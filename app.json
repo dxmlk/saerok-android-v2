@@ -1,21 +1,20 @@
 {
   "expo": {
-    "name": "saerok-android-v2",
+    "name": "새록",
     "slug": "saerok-android-v2",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FEFEFE"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
+      "googleServicesFile": "./path/to/google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
@@ -51,7 +50,14 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-font",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "새록 이미지를 저장하기 위해 사진 접근 권한이 필요해요.",
+          "savePhotosPermission": "새록 이미지를 갤러리에 저장하기 위해 권한이 필요해요."
+        }
+      ]
     ],
     "extra": {
       "router": {},

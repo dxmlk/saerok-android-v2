@@ -16,6 +16,10 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 /ios
+android/.gradle/
+android/build/
+android/app/build/
+android/app/.cxx/
 
 # Metro
 .metro-health-check*
@@ -24,6 +28,11 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+debug.log
+*.bak
+*.bak.*
+*.pom
+classes.jar
 
 # macOS
 .DS_Store
@@ -31,6 +40,12 @@ yarn-error.*
 
 # local env files
 .env*.local
+saerok-*-firebase-adminsdk-*.json
+
+# local/project metadata not needed for cloud build
+.github/
+.vscode/
+docs/
 
 # typescript
 *.tsbuildinfo

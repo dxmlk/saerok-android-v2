@@ -1,12 +1,16 @@
-import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import Svg, { Rect } from "react-native-svg";
 
 import AddSaerokDexIcon from "@/assets/icon/button/AddSaerokDexIcon";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
+import NotificationIcon from "@/assets/icon/icon/NotificationIcon";
 import { SpeechBubbleIcon } from "@/assets/SaerokSvgs";
 import SaerokCirclesBg from "@/assets/images/SaerokCirclesBg";
+import { useAuth } from "@/hooks/useAuth";
 import { fetchMyCollections } from "@/services/api/collections";
+import { fetchUnreadNotificationCountApi } from "@/services/api/notifications";
 import { rfs, rs } from "@/theme";
 import { font } from "@/theme/typography";
 
@@ -34,8 +38,9 @@ export default function SaerokMain({
   topInset?: number;
 }) {
   const router = useRouter();
+  const { isLoggedIn } = useAuth();
   const [birdCount, setBirdCount] = useState(0);
-  const isLoggedIn = true;
+  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
 
   const haruFont = (font as any).haru ?? (font as any).logo ?? font.regular;
   const randomMessage = useMemo(() => {
@@ -44,6 +49,11 @@ export default function SaerokMain({
   }, []);
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      setBirdCount(0);
+      return;
+    }
+
     (async () => {
       try {
         const items = await fetchMyCollections();
@@ -52,20 +62,63 @@ export default function SaerokMain({
         setBirdCount(0);
       }
     })();
-  }, [refreshKey]);
+  }, [isLoggedIn, refreshKey]);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setHasUnreadNotifications(false);
+      return;
+    }
+
+    (async () => {
+      try {
+        const res = await fetchUnreadNotificationCountApi();
+        setHasUnreadNotifications((res.unreadCount ?? 0) > 0);
+      } catch {
+        setHasUnreadNotifications(false);
+      }
+    })();
+  }, [isLoggedIn, refreshKey]);
 
   return (
     <View style={[styles.hero, { height: rs(420) + topInset }]}>
       <View pointerEvents="none" style={styles.bgWrap}>
         <View style={styles.circlesPos}>
-          <SaerokCirclesBg width={rs(543)} height={rs(464)} />
+          <SaerokCirclesBg width={rs(543)} height={rs(550)} />
         </View>
-        <BlurView intensity={80} tint="light" style={styles.blur} />
         <View style={styles.overlay} />
       </View>
 
+      <TouchableOpacity
+        style={[styles.notificationBtn, { top: rs(48) + topInset }]}
+        onPress={() => router.push("/saerok/notifications")}
+      >
+        <View style={styles.notificationBtnInner}>
+          <NotificationIcon width={rs(24)} height={rs(24)} color="#0D0D0D" />
+          {hasUnreadNotifications ? (
+            <View style={styles.notificationDot}>
+              <Svg width={rs(9)} height={rs(9)} viewBox="0 0 9 9" fill="none">
+                <Rect
+                  x="1"
+                  y="1"
+                  width="7"
+                  height="7"
+                  rx="3.5"
+                  fill="#4190FF"
+                  stroke="#FEFEFE"
+                  strokeOpacity="0.6"
+                  strokeWidth="2"
+                />
+              </Svg>
+            </View>
+          ) : null}
+        </View>
+      </TouchableOpacity>
+
       <View style={[styles.msgWrap, { top: rs(48) + topInset }]}>
-        <Text style={[styles.msg, { fontFamily: haruFont }]}>{randomMessage}</Text>
+        <Text style={[styles.msg, { fontFamily: haruFont }]}>
+          {randomMessage}
+        </Text>
       </View>
 
       <View style={styles.countRow}>
@@ -74,21 +127,35 @@ export default function SaerokMain({
       </View>
 
       {isLoggedIn ? (
-        <Pressable
+        <TouchableOpacity
           style={[styles.fab, styles.fabActive]}
           onPress={() => router.push("/saerok/write")}
         >
-          <AddSaerokDexIcon width={rs(40)} height={rs(38.333)} color="#FEFEFE" />
-        </Pressable>
+          <AddSaerokDexIcon
+            width={rs(40)}
+            height={rs(38.333)}
+            color="#FEFEFE"
+          />
+        </TouchableOpacity>
       ) : (
         <>
-          <Pressable style={styles.loginBubble} onPress={() => router.push("/login")}>
+          <Pressable
+            style={styles.loginBubble}
+            onPress={() => router.push("/login")}
+          >
             <View style={styles.bubbleBox}>
-              <SpeechBubbleIcon width={rs(176)} height={rs(56)} />
+              <SpeechBubbleIcon width={rs(190)} height={rs(56)} />
+              <View pointerEvents="none" style={styles.bubbleTextWrap}>
+                <Text style={styles.bubbleText}>로그인하고 새록 작성하기</Text>
+              </View>
             </View>
           </Pressable>
           <View style={[styles.fab, styles.fabDisabled]}>
-            <AddSaerokDexIcon width={rs(40)} height={rs(38.333)} color="#979797" />
+            <AddSaerokDexIcon
+              width={rs(40)}
+              height={rs(38.333)}
+              color="#979797"
+            />
           </View>
         </>
       )}
@@ -109,12 +176,32 @@ const styles = StyleSheet.create({
     left: rs(-75),
     top: rs(-90),
   },
-  blur: {
-    ...StyleSheet.absoluteFillObject,
-  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(242,242,242,0.60)",
+  },
+  notificationBtn: {
+    position: "absolute",
+    right: rs(8),
+    width: rs(72),
+    height: rs(72),
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
+  notificationBtnInner: {
+    width: rs(40),
+    height: rs(40),
+    borderRadius: rs(20),
+    backgroundColor: "rgba(254, 254, 254, 0.72)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  notificationDot: {
+    position: "absolute",
+    top: rs(-1),
+    right: rs(4),
+    zIndex: 11,
   },
   msgWrap: {
     position: "absolute",
@@ -162,5 +249,22 @@ const styles = StyleSheet.create({
     bottom: rs(100),
     zIndex: 10,
   },
-  bubbleBox: { width: rs(176), height: rs(56) },
+  bubbleBox: {
+    width: rs(190),
+    height: rs(56),
+    position: "relative",
+  },
+  bubbleTextWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingTop: rs(12),
+  },
+  bubbleText: {
+    fontSize: rfs(15),
+    lineHeight: rfs(20),
+    fontFamily: font.bold,
+    color: "#4190FF",
+    textAlign: "center",
+  },
 });

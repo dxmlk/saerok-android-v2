@@ -17,6 +17,7 @@ import {
   Text,
   View,
 } from "react-native";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 function formatElapsed(publishedAt: string) {
@@ -77,7 +78,7 @@ export default function AnnouncementPage() {
   );
 
   return (
-    <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
+    <SafeAreaView style={styles.root} edges={["top", "left", "right", "bottom"]}>
       <SimpleHeader title={"\uacf5\uc9c0\uc0ac\ud56d"} circleBackButton />
       <View style={styles.headerDivider} />
 
@@ -88,9 +89,9 @@ export default function AnnouncementPage() {
       ) : error ? (
         <View style={styles.center}>
           <Text style={styles.errorText}>{error}</Text>
-          <Pressable style={styles.retryBtn} onPress={() => load()}>
+          <TouchableOpacity style={styles.retryBtn} onPress={() => load()}>
             <Text style={styles.retryText}>{"\ub2e4\uc2dc \uc2dc\ub3c4"}</Text>
-          </Pressable>
+          </TouchableOpacity>
         </View>
       ) : (
         <FlatList
@@ -106,7 +107,7 @@ export default function AnnouncementPage() {
             />
           }
           renderItem={({ item }) => (
-            <Pressable
+            <TouchableOpacity
               style={styles.row}
               onPress={() =>
                 router.push({
@@ -136,7 +137,7 @@ export default function AnnouncementPage() {
                   color="#0D0D0D"
                 />
               </View>
-            </Pressable>
+            </TouchableOpacity>
           )}
         />
       )}
@@ -158,7 +159,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#F2F2F2",
   },
   listContent: {
-    paddingBottom: rs(32),
     flexGrow: 1,
   },
   row: {

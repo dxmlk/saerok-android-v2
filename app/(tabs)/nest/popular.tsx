@@ -46,7 +46,7 @@ export default function NestPopularScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           {loading ? (
             <View style={styles.loadingWrap}>
-              <ActivityIndicator color="#91BFFF" />
+              <ActivityIndicator color="#4190FF" />
             </View>
           ) : (
             <View style={communityCollectionRowStyles.card}>
@@ -55,7 +55,10 @@ export default function NestPopularScreen() {
                   <CommunityCollectionRow
                     item={item}
                     variant="popular"
-                    onPress={() => router.push(`/saerok/${item.collectionId}`)}
+                    onPress={() => {
+                      const { openSaerokDetail } = require("@/lib/navigation");
+                      openSaerokDetail(router, item.collectionId, { from: "nest_popular" });
+                    }}
                   />
                   {idx < items.length - 1 ? (
                     <View style={communityCollectionRowStyles.divider} />
@@ -95,4 +98,3 @@ const styles = StyleSheet.create({
     fontSize: rfs(13),
   },
 });
-

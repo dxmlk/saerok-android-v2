@@ -13,9 +13,10 @@ import {
   removeAccessToken,
   clearTokens,
 } from "../lib/tokenStore";
-import { getUserInfo } from "../services/api/user";
+import { getUserInfo, withdrawUser } from "../services/api/user";
 import { onAuthExpired } from "../services/authEvents";
 import { registerPushTokenToServer } from "@/services/notifications/push";
+import { clearSaerokActionButtonVariant } from "@/lib/saerokActionButtonVariant";
 
 export interface User {
   nickname: string;
@@ -31,6 +32,7 @@ interface AuthContextProps {
   loading: boolean;
   refreshUser: (opts?: { silent?: boolean }) => Promise<boolean>;
   logout: () => Promise<void>;
+  withdraw: () => Promise<void>;
   setUser: (u: User | null) => void;
 }
 
@@ -76,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const off = onAuthExpired(async () => {
       await clearTokens();
+      await clearSaerokActionButtonVariant();
       setUser(null);
       router.replace("/login");
     });
@@ -84,6 +87,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await removeAccessToken();
+    await clearSaerokActionButtonVariant();
+    setUser(null);
+    router.replace("/login");
+  }, [router]);
+
+  const withdraw = useCallback(async () => {
+    await withdrawUser();
+    await clearTokens();
+    await clearSaerokActionButtonVariant();
     setUser(null);
     router.replace("/login");
   }, [router]);
@@ -96,6 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         loading,
         refreshUser,
         logout,
+        withdraw,
         setUser,
       }}
     >

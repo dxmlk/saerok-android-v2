@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { useAuth } from "@/hooks/useAuth";
 import {
   CollectionLikeUser,
   fetchCollectionLikeListApi,
@@ -23,9 +24,11 @@ import { font, rfs, rs } from "@/theme";
 import HeartIcon from "@/assets/icon/saerok/HeartIcon";
 import InfoChevronIcon from "@/assets/icon/saerok/InfoChevronIcon";
 import EmptyState from "@/components/common/EmptyState";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 
 type Props = {
   collectionId: number;
+  variant?: "default" | "floating" | "vertical";
 };
 
 function LikeSheet({
@@ -52,7 +55,7 @@ function LikeSheet({
     (to: number, done?: () => void) => {
       Animated.timing(translateY, {
         toValue: to,
-        duration: 210,
+        duration: 240,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start(() => done?.());
@@ -148,17 +151,24 @@ function LikeSheet({
             <Text style={styles.sheetTitle}>좋아요</Text>
             <Text style={styles.sheetCount}>{count}</Text>
           </View>
-          <Pressable onPress={requestClose} accessibilityRole="button" accessibilityLabel="닫기">
+          <TouchableOpacity
+            onPress={requestClose}
+            accessibilityRole="button"
+            accessibilityLabel="닫기"
+          >
             <Text style={styles.sheetClose}>×</Text>
-          </Pressable>
+          </TouchableOpacity>
         </View>
 
-        <ScrollView contentContainerStyle={styles.sheetContent} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.sheetContent}
+          showsVerticalScrollIndicator={false}
+        >
           {users.length ? (
             users.map((u) => {
               const uri = u.thumbnailProfileImageUrl || u.profileImageUrl || "";
               return (
-                <Pressable
+                <TouchableOpacity
                   key={u.userId}
                   style={styles.userRow}
                   onPress={() => onPressUser(u.userId)}
@@ -175,8 +185,12 @@ function LikeSheet({
                     </View>
                     <Text style={styles.userName}>{u.nickname}</Text>
                   </View>
-                  <InfoChevronIcon width={rs(17)} height={rs(17)} color="#979797" />
-                </Pressable>
+                  <InfoChevronIcon
+                    width={rs(17)}
+                    height={rs(17)}
+                    color="#979797"
+                  />
+                </TouchableOpacity>
               );
             })
           ) : (
@@ -192,8 +206,12 @@ function LikeSheet({
   );
 }
 
-export default function CollectionLikeButton({ collectionId }: Props) {
+export default function CollectionLikeButton({
+  collectionId,
+  variant = "default",
+}: Props) {
   const router = useRouter();
+  const { isLoggedIn } = useAuth();
   const [isLiked, setIsLiked] = useState<boolean | null>(null);
   const [likeUsers, setLikeUsers] = useState<CollectionLikeUser[]>([]);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -206,10 +224,14 @@ export default function CollectionLikeButton({ collectionId }: Props) {
     let cancelled = false;
 
     (async () => {
-      try {
-        const liked = await getCollectionLikeStatusApi(collectionId);
-        if (!cancelled) setIsLiked(liked);
-      } catch {}
+      if (isLoggedIn) {
+        try {
+          const liked = await getCollectionLikeStatusApi(collectionId);
+          if (!cancelled) setIsLiked(liked);
+        } catch {}
+      } else if (!cancelled) {
+        setIsLiked(false);
+      }
 
       try {
         const items = await fetchCollectionLikeListApi(collectionId);
@@ -224,10 +246,14 @@ export default function CollectionLikeButton({ collectionId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [collectionId]);
+  }, [collectionId, isLoggedIn]);
 
   const onToggle = async () => {
     if (!collectionId) return;
+    if (!isLoggedIn) {
+      router.push("/login");
+      return;
+    }
 
     try {
       await toggleCollectionLikeApi(collectionId);
@@ -246,8 +272,6 @@ export default function CollectionLikeButton({ collectionId }: Props) {
     } catch {}
   };
 
-  const recentUsers = likeUsers.slice(0, 4);
-
   const openLikeSheet = async () => {
     try {
       const items = await fetchCollectionLikeListApi(collectionId);
@@ -259,56 +283,59 @@ export default function CollectionLikeButton({ collectionId }: Props) {
   };
 
   return (
-    <View style={styles.btn}>
-      <View style={styles.row}>
-        <Pressable
+    <View
+      style={[
+        styles.btn,
+        variant === "floating" && styles.btnFloating,
+        variant === "vertical" && styles.btnVertical,
+      ]}
+    >
+      <View
+        style={[
+          styles.row,
+          variant === "floating" && styles.rowFloating,
+          variant === "vertical" && styles.rowVertical,
+        ]}
+      >
+        <TouchableOpacity
           onPress={onToggle}
-          style={styles.leftGroup}
+          style={[
+            styles.leftGroup,
+            variant === "floating" && styles.leftGroupFloating,
+            variant === "vertical" && styles.leftGroupVertical,
+          ]}
           accessibilityRole="button"
           accessibilityLabel={isLiked ? "좋아요 취소" : "좋아요"}
         >
-          <View style={styles.iconWrap}>
+          <View
+            style={[
+              styles.iconWrap,
+              variant === "floating" && styles.iconWrapFloating,
+              variant === "vertical" && styles.iconWrapVertical,
+            ]}
+          >
             <HeartIcon
-              width={rs(22)}
-              height={rs(20)}
-              fillColor={isLiked ? "#FF234F" : "#FEFEFE"}
+              width={rs(24)}
+              height={rs(24)}
+              fillColor={isLiked ? "#FF234F" : "transparent"}
               strokeColor={isLiked ? "#FF234F" : "#0D0D0D"}
               strokeWidth={2}
             />
           </View>
-          {recentUsers.length > 0 ? (
-            <View style={styles.avatarStack}>
-              {recentUsers.map((u, idx) => {
-                const uri = u.thumbnailProfileImageUrl || u.profileImageUrl || "";
-                return (
-                  <View
-                    key={`${u.userId}-${idx}`}
-                    style={[
-                      styles.avatarWrap,
-                      idx > 0 && { marginLeft: -rs(11) },
-                      { zIndex: recentUsers.length - idx },
-                    ]}
-                  >
-                    {uri ? (
-                      <Image source={{ uri }} style={styles.avatarImg} />
-                    ) : (
-                      <View style={styles.avatarFallback} />
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          ) : null}
-        </Pressable>
+        </TouchableOpacity>
 
-        <Pressable
+        <TouchableOpacity
           onPress={openLikeSheet}
-          style={styles.countWrap}
+          style={[
+            styles.countWrap,
+            variant === "floating" && styles.countWrapFloating,
+            variant === "vertical" && styles.countWrapVertical,
+          ]}
           accessibilityRole="button"
           accessibilityLabel="좋아요 목록 열기"
         >
           <Text style={styles.count}>{likeCount.current}</Text>
-        </Pressable>
+        </TouchableOpacity>
       </View>
 
       <LikeSheet
@@ -332,15 +359,45 @@ const styles = StyleSheet.create({
     paddingLeft: rs(14),
     paddingRight: rs(21),
   },
+  btnFloating: {
+    flex: 0,
+    paddingVertical: 0,
+    paddingLeft: 0,
+    paddingRight: 0,
+  },
+  btnVertical: {
+    flex: 0,
+    paddingVertical: 0,
+    paddingLeft: 0,
+    paddingRight: 0,
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
+  rowFloating: {
+    justifyContent: "center",
+    gap: rs(10),
+  },
+  rowVertical: {
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(6),
+  },
   leftGroup: {
     flexDirection: "row",
     alignItems: "center",
     position: "relative",
+  },
+  leftGroupFloating: {
+    position: "relative",
+  },
+  leftGroupVertical: {
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
   },
   iconWrap: {
     width: rs(40),
@@ -349,29 +406,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     zIndex: 10,
   },
-  avatarStack: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginLeft: -rs(19),
+  iconWrapFloating: {
+    width: rs(24),
+    height: rs(24),
   },
-  avatarWrap: {
-    width: rs(25),
-    height: rs(25),
-    borderRadius: rs(16),
-    borderWidth: rs(1),
-    borderColor: "#F2F2F2",
-    overflow: "hidden",
-    backgroundColor: "#E5E7EB",
-  },
-  avatarImg: {
-    width: "100%",
-    height: "100%",
-    borderRadius: rs(16),
-  },
-  avatarFallback: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "#E5E7EB",
+  iconWrapVertical: {
+    width: rs(24),
+    height: rs(24),
   },
   count: {
     color: "#0D0D0D",
@@ -383,6 +424,18 @@ const styles = StyleSheet.create({
     paddingLeft: rs(6),
     paddingRight: rs(2),
     paddingVertical: rs(6),
+  },
+  countWrapFloating: {
+    paddingLeft: 0,
+    paddingRight: 0,
+    paddingVertical: 0,
+  },
+  countWrapVertical: {
+    paddingLeft: 0,
+    paddingRight: 0,
+    paddingVertical: 0,
+    alignItems: "center",
+    justifyContent: "center",
   },
   sheetDim: {
     flex: 1,

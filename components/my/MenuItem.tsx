@@ -1,6 +1,7 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import InfoChevronIcon from "@/assets/icon/saerok/InfoChevronIcon";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 import { rfs, rs } from "@/theme";
 
 type Props = {
@@ -22,13 +23,14 @@ export default function MenuItem({
   rightText,
   onPress,
 }: Props) {
-  const blocked = disabled || !isActive;
+  const visuallyBlocked = disabled || !isActive;
+  const blocked = visuallyBlocked || !!rightText;
 
   return (
-    <Pressable
+    <TouchableOpacity
       disabled={blocked}
       onPress={blocked ? undefined : onPress}
-      style={[styles.rowPressable, blocked && styles.wrapDisabled]}
+      style={[styles.rowPressable, visuallyBlocked && styles.wrapDisabled]}
     >
       <View style={styles.wrap}>
         <View style={styles.iconBox}>{icon}</View>
@@ -36,17 +38,17 @@ export default function MenuItem({
       </View>
 
       {rightText ? (
-        <Text style={[styles.rightText, blocked && styles.rightTextDisabled]}>
+        <Text style={[styles.rightText, visuallyBlocked && styles.rightTextDisabled]}>
           {rightText}
         </Text>
       ) : (
         <InfoChevronIcon
           width={rs(17)}
           height={rs(17)}
-          color={blocked ? "#D1D5DB" : "#979797"}
+          color={visuallyBlocked ? "#D1D5DB" : "#979797"}
         />
       )}
-    </Pressable>
+    </TouchableOpacity>
   );
 }
 

@@ -8,6 +8,8 @@ export default function NestLayout() {
       <Stack.Screen name="recent" />
       <Stack.Screen name="popular" />
       <Stack.Screen name="help" />
+      <Stack.Screen name="freeboard" />
+      <Stack.Screen name="freeboard-detail/[postId]" />
     </Stack>
   );
 }

@@ -2,11 +2,11 @@ import React from "react";
 import {
   Animated,
   Easing,
-  Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 import { rfs, rs } from "@/theme";
 import { font } from "@/theme/typography";
 
@@ -42,13 +42,13 @@ export default function ToggleRow({ label, value, onToggle }: Props) {
     <View style={styles.row}>
       <Text style={styles.label}>{label}</Text>
 
-      <Pressable onPress={onToggle} style={styles.togglePress} hitSlop={8}>
+      <TouchableOpacity onPress={onToggle} style={styles.togglePress} hitSlop={8}>
         <Animated.View style={[styles.toggleTrack, { backgroundColor: trackColor }]}>
           <Animated.View
             style={[styles.thumb, { transform: [{ translateX: thumbTranslateX }] }]}
           />
         </Animated.View>
-      </Pressable>
+      </TouchableOpacity>
     </View>
   );
 }

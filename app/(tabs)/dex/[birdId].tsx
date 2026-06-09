@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   BackHandler,
   Image,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,19 +14,24 @@ import {
 } from "react-native-safe-area-context";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 
+import BackButtonIcon from "@/assets/icon/button/BackButtonIcon";
+import ScrapIcon from "@/assets/icon/button/ScrapIcon";
+import AddSaerokDexIcon from "@/assets/icon/button/AddSaerokDexIcon";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
+import HabitatIcon from "@/assets/icon/icon/HabitatIcon";
+import SeasonIcon from "@/assets/icon/icon/SeasonIcon";
+import SizeIcon from "@/assets/icon/icon/SizeIcon";
+import { useAuth } from "@/hooks/useAuth";
 import {
   fetchBookmarkStatusApi,
   fetchDexDetailApi,
   toggleBookmarkApi,
 } from "@/services/api/birds";
-import BackButtonIcon from "@/assets/icon/button/BackButtonIcon";
-import ScrapIcon from "@/assets/icon/button/ScrapIcon";
-import AddSaerokDexIcon from "@/assets/icon/button/AddSaerokDexIcon";
-import SeasonIcon from "@/assets/icon/icon/SeasonIcon";
-import HabitatIcon from "@/assets/icon/icon/HabitatIcon";
-import SizeIcon from "@/assets/icon/icon/SizeIcon";
-import { font } from "@/theme/typography";
+import { useDexBookmarksState } from "@/states/useDexBookmarksState";
 import { rfs, rs } from "@/theme";
+import { font } from "@/theme/typography";
+
+const TAB_BAR_HEIGHT = rs(60);
 
 const seasonMap: Record<string, string> = {
   SPRING: "봄",
@@ -70,15 +74,8 @@ function mapJoin(values: string[] | undefined, mapper: Record<string, string>) {
 function getClassificationText(bird: any): string {
   const t = bird?.taxonomy;
   if (t && typeof t === "object") {
-    const parts = [
-      t.phylumKor,
-      t.classKor,
-      t.orderKor,
-      t.familyKor,
-      t.genusKor,
-      t.speciesKor,
-    ].filter(Boolean);
-    if (parts.length) return parts.join(" > ");
+    const parts = [t.orderKor, t.familyKor, t.speciesKor].filter(Boolean);
+    if (parts.length) return parts.join("  >  ");
   }
   return "-";
 }
@@ -86,6 +83,7 @@ function getClassificationText(bird: any): string {
 export default function DexDetailScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { isLoggedIn } = useAuth();
   const { birdId, returnTo, returnMode, returnCollectionId, returnQ } =
     useLocalSearchParams<{
       birdId: string;
@@ -140,13 +138,15 @@ export default function DexDetailScreen() {
         onHardwareBack,
       );
       return () => sub.remove();
-    }, [returnTo, returnMode, returnCollectionId, returnQ]),
+    }, [returnCollectionId, returnMode, returnQ, returnTo]),
   );
 
   const [bird, setBird] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [bookmarked, setBookmarked] = useState(false);
   const [imageRatio, setImageRatio] = useState<number | null>(null);
+  const bookmarkedIds = useDexBookmarksState((state) => state.bookmarkedIds);
+  const setBookmarked = useDexBookmarksState((state) => state.setBookmarked);
+  const bookmarked = numericId ? bookmarkedIds.has(numericId) : false;
 
   useEffect(() => {
     if (!numericId) return;
@@ -170,10 +170,15 @@ export default function DexDetailScreen() {
 
   useEffect(() => {
     if (!numericId) return;
+    if (!isLoggedIn) {
+      setBookmarked(numericId, false);
+      return;
+    }
+
     fetchBookmarkStatusApi(numericId)
-      .then((res) => setBookmarked(!!res.data?.bookmarked))
+      .then((res) => setBookmarked(numericId, !!res.data?.bookmarked))
       .catch(() => {});
-  }, [numericId]);
+  }, [isLoggedIn, numericId, setBookmarked]);
 
   useEffect(() => {
     const uri =
@@ -194,7 +199,7 @@ export default function DexDetailScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingWrap}>
-        <ActivityIndicator />
+        <ActivityIndicator color="#4190FF" />
       </SafeAreaView>
     );
   }
@@ -221,10 +226,13 @@ export default function DexDetailScreen() {
   return (
     <SafeAreaView style={styles.root} edges={["left", "right"]}>
       <ScrollView
+        style={{ marginBottom: insets.bottom + TAB_BAR_HEIGHT }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={[styles.imageSection, { paddingTop: rs(34) }]}>
+        <View
+          style={[styles.imageSection, { paddingTop: insets.top + rs(20) }]}
+        >
           <View style={styles.imageWrap}>
             <Image
               source={{ uri: mainImageUri }}
@@ -236,49 +244,6 @@ export default function DexDetailScreen() {
                   : styles.mainImageFallback,
               ]}
             />
-
-            <Pressable
-              onPress={() => {
-                setBookmarked((prev) => !prev);
-                toggleBookmarkApi(bird.id).catch(() =>
-                  setBookmarked((prev) => !prev),
-                );
-              }}
-              style={styles.overlayBtnBottomRightLeft}
-              hitSlop={8}
-            >
-              <View style={styles.overlayCircle}>
-                <ScrapIcon
-                  width={rs(17)}
-                  height={rs(24)}
-                  stroke={bookmarked ? "#F7BE65" : "#0D0D0D"}
-                  fill={bookmarked ? "#F7BE65" : "none"}
-                  strokeWidth={1.5}
-                />
-              </View>
-            </Pressable>
-
-            <Pressable
-              onPress={() =>
-                router.push({
-                  pathname: "/saerok/write",
-                  params: {
-                    birdId: String(bird.id),
-                    birdName: bird.koreanName,
-                  },
-                })
-              }
-              style={styles.overlayBtnBottomRight}
-              hitSlop={8}
-            >
-              <View style={styles.overlayCircle}>
-                <AddSaerokDexIcon
-                  width={rs(24)}
-                  height={rs(23)}
-                  color="#0D0D0D"
-                />
-              </View>
-            </Pressable>
           </View>
 
           <View style={styles.chipsRow}>
@@ -308,24 +273,83 @@ export default function DexDetailScreen() {
           <Text style={styles.scientificName}>{bird.scientificName}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>분류</Text>
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionLabel}>분류</Text>
           <Text style={styles.classificationText}>{classificationText}</Text>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>상세설명</Text>
+        <View style={styles.descriptionCard}>
+          <Text style={styles.sectionLabel}>상세설명</Text>
           <Text style={styles.descriptionText}>{bird.description ?? "-"}</Text>
         </View>
       </ScrollView>
 
-      <Pressable
-        onPress={handleBack}
-        style={[styles.floatingBackBtn, { top: insets.top + rs(20) }]}
-        hitSlop={12}
+      <View
+        style={[
+          styles.topBar,
+          styles.topBarFloating,
+          { top: insets.top + rs(30) },
+        ]}
       >
-        <BackButtonIcon size={rs(40)} />
-      </Pressable>
+        <TouchableOpacity onPress={handleBack} hitSlop={12}>
+          <View style={styles.topCircleBtn}>
+            <BackButtonIcon size={rs(48)} />
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.topBarRight}>
+          <TouchableOpacity
+            onPress={() => {
+              if (!isLoggedIn) {
+                router.push("/login");
+                return;
+              }
+              const nextBookmarked = !bookmarked;
+              setBookmarked(bird.id, nextBookmarked);
+              toggleBookmarkApi(bird.id).catch(() =>
+                setBookmarked(bird.id, bookmarked),
+              );
+            }}
+            hitSlop={8}
+          >
+            <View style={styles.topCircleBtn}>
+              <ScrapIcon
+                width={rs(17)}
+                height={rs(24)}
+                stroke={bookmarked ? "#F7BE65" : "#0D0D0D"}
+                fill={bookmarked ? "#F7BE65" : "none"}
+                strokeWidth={2}
+              />
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => {
+              if (!isLoggedIn) {
+                router.push("/login");
+                return;
+              }
+              router.push({
+                pathname: "/saerok/write",
+                params: {
+                  birdId: String(bird.id),
+                  birdName: bird.koreanName,
+                },
+              });
+            }}
+            hitSlop={8}
+          >
+            <View style={styles.topCircleBtn}>
+              <AddSaerokDexIcon
+                width={rs(24)}
+                height={rs(23)}
+                color="#0D0D0D"
+                strokeWidth={2}
+              />
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -333,23 +357,48 @@ export default function DexDetailScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F2F2F2",
   },
   loadingWrap: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F2F2F2",
   },
   emptyText: {
     color: "#979797",
     fontSize: rfs(14),
   },
   scrollContent: {
-    paddingBottom: rs(100),
+    paddingBottom: rs(60),
+  },
+  topBar: {
+    paddingHorizontal: rs(24),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  topBarFloating: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 20,
+  },
+  topBarRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: rs(10),
+  },
+  topCircleBtn: {
+    width: rs(48),
+    height: rs(48),
+    borderRadius: rs(24),
+    backgroundColor: "#F2F2F2",
+    alignItems: "center",
+    justifyContent: "center",
   },
   imageSection: {
-    paddingHorizontal: rs(16),
+    paddingHorizontal: rs(9),
   },
   imageWrap: {
     position: "relative",
@@ -364,33 +413,9 @@ const styles = StyleSheet.create({
   mainImageFallback: {
     aspectRatio: 1,
   },
-  overlayBtnBottomRightLeft: {
-    position: "absolute",
-    right: rs(56),
-    bottom: rs(12),
-  },
-  overlayBtnBottomRight: {
-    position: "absolute",
-    right: rs(12),
-    bottom: rs(12),
-  },
-  overlayCircle: {
-    width: rs(40),
-    height: rs(40),
-    borderRadius: rs(20),
-    backgroundColor: "rgba(254,254,254,0.85)",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#F2F2F2",
-  },
-  floatingBackBtn: {
-    position: "absolute",
-    left: rs(28),
-    zIndex: 10,
-  },
   chipsRow: {
-    marginTop: rs(16),
+    marginTop: rs(13),
+    marginLeft: rs(15),
     flexDirection: "row",
     flexWrap: "wrap",
     alignItems: "center",
@@ -412,21 +437,18 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontFamily: font.semibold,
     fontSize: rfs(15),
-    fontStyle: "normal",
-    lineHeight: rfs(18),
     fontWeight: "600",
+    lineHeight: rfs(18),
   },
   nameBlock: {
-    marginTop: rs(37),
+    marginTop: rs(42),
     alignItems: "center",
-    paddingHorizontal: rs(24),
   },
   koreanName: {
     color: "#0D0D0D",
     textAlign: "center",
     fontFamily: font.money,
     fontSize: rfs(20),
-    fontStyle: "normal",
     fontWeight: "400",
     lineHeight: rfs(22),
   },
@@ -436,37 +458,44 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontFamily: font.regular,
     fontSize: rfs(15),
-    fontStyle: "normal",
     fontWeight: "400",
     lineHeight: rfs(18),
   },
-  section: {
+  sectionCard: {
     marginTop: rs(40),
-    paddingHorizontal: rs(25),
+    marginHorizontal: rs(9),
+    paddingHorizontal: rs(20),
+    paddingTop: rs(13),
+    paddingBottom: rs(14),
+    borderRadius: rs(20),
+    backgroundColor: "#FEFEFE",
   },
-  sectionTitle: {
-    color: "#0D0D0D",
-    fontFamily: font.haru,
-    fontSize: rfs(18),
-    fontStyle: "normal",
-    fontWeight: "400",
-    lineHeight: rfs(20),
+  descriptionCard: {
+    marginTop: rs(7),
+    marginHorizontal: rs(9),
+    paddingHorizontal: rs(20),
+    paddingTop: rs(13),
+    paddingBottom: rs(14),
+    borderRadius: rs(20),
+    backgroundColor: "#FEFEFE",
   },
-  classificationText: {
-    marginTop: rs(14),
-    color: "#6D6D6D",
-    fontFamily: font.regular,
-    fontSize: rfs(13),
-    fontStyle: "normal",
+  sectionLabel: {
+    color: "#979797",
+    fontSize: rfs(12),
     fontWeight: "400",
     lineHeight: rfs(16),
   },
-  descriptionText: {
-    marginTop: rs(14),
+  classificationText: {
+    marginTop: rs(5),
     color: "#0D0D0D",
-    fontFamily: font.regular,
     fontSize: rfs(15),
-    fontStyle: "normal",
+    fontWeight: "400",
+    lineHeight: rfs(18),
+  },
+  descriptionText: {
+    marginTop: rs(7),
+    color: "#0D0D0D",
+    fontSize: rfs(15),
     fontWeight: "400",
     lineHeight: rfs(25),
   },

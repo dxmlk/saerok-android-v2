@@ -1,7 +1,6 @@
 import React, { useMemo } from "react";
 import {
   Animated,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -13,6 +12,7 @@ import { BlurView } from "expo-blur";
 
 import ScrapIcon from "@/assets/icon/icon/ScrapIcon";
 import SearchIcon from "@/assets/icon/icon/SearchIcon";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 import { font } from "@/theme/typography";
 import { rfs, rs } from "@/theme";
 
@@ -35,8 +35,8 @@ export default function DexMainHeader({
   height = rs(276),
 }: Props) {
   const shownCount = useMemo(() => {
-    return bookmarkActive ? birdCount : 585;
-  }, [bookmarkActive, birdCount]);
+    return birdCount;
+  }, [birdCount]);
 
   const headerOpacity = useMemo(() => {
     return scrollY.interpolate({
@@ -80,7 +80,7 @@ export default function DexMainHeader({
           <Text style={styles.title}>도감</Text>
 
           <View style={styles.iconRow}>
-            <Pressable
+            <TouchableOpacity
               onPress={onPressBookmark}
               hitSlop={rs(8)}
               style={styles.iconBtn}
@@ -94,15 +94,15 @@ export default function DexMainHeader({
                   strokeWidth={2}
                 />
               </View>
-            </Pressable>
+            </TouchableOpacity>
 
-            <Pressable
+            <TouchableOpacity
               onPress={onPressSearch}
               hitSlop={rs(8)}
               style={styles.iconBtn}
             >
               <SearchIcon />
-            </Pressable>
+            </TouchableOpacity>
           </View>
         </View>
 

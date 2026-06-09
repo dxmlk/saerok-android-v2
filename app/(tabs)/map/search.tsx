@@ -3,7 +3,6 @@ import * as Location from "expo-location";
 import React, { useEffect, useRef, useState } from "react";
 import {
   FlatList,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +14,7 @@ import MapIcon from "@/assets/icon/nav/MapIcon";
 import InfoChevronIcon from "@/assets/icon/saerok/InfoChevronIcon";
 import SearchBar from "@/components/common/SearchBar";
 import SimpleHeader from "@/components/common/SimpleHeader";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 import { searchKakaoPlaces, type KakaoPlaceDoc } from "@/services/kakaoPlaces";
 import { useMapSearchState } from "@/states/useMapSearchState";
 import { font, rfs, rs } from "@/theme";
@@ -56,20 +56,43 @@ export default function MapSearchScreen() {
   }, []);
 
   useEffect(() => {
-    const term = q.trim();
-    if (!term) {
+    if (!q.trim()) {
       setItems([]);
       setSearched(false);
       setLoading(false);
       return;
     }
 
-    const t = setTimeout(() => {
-      void doSearch();
+    let canceled = false;
+    const timer = setTimeout(async () => {
+      const term = q.trim();
+      if (!term) return;
+
+      setLoading(true);
+      try {
+        const docs = await searchKakaoPlaces(term, 1, 15, {
+          latitude: myCoords?.latitude,
+          longitude: myCoords?.longitude,
+        });
+        if (!canceled) {
+          setItems(docs);
+          setSearched(true);
+        }
+      } catch {
+        if (!canceled) {
+          setItems([]);
+          setSearched(true);
+        }
+      } finally {
+        if (!canceled) setLoading(false);
+      }
     }, 300);
 
-    return () => clearTimeout(t);
-  }, [q, myCoords]);
+    return () => {
+      canceled = true;
+      clearTimeout(timer);
+    };
+  }, [myCoords?.latitude, myCoords?.longitude, q]);
 
   const doSearch = async () => {
     const term = q.trim();
@@ -131,7 +154,7 @@ export default function MapSearchScreen() {
             )
           }
           renderItem={({ item }) => (
-            <Pressable onPress={() => onSelect(item)} style={styles.row}>
+            <TouchableOpacity onPress={() => onSelect(item)} style={styles.row}>
               <MapIcon width={rs(24)} height={rs(24)} stroke="#DAE0DE" fill="none" />
               <View style={styles.rowTextWrap}>
                 <Text style={styles.placeName}>{item.place_name}</Text>
@@ -140,7 +163,7 @@ export default function MapSearchScreen() {
                 </Text>
               </View>
               <InfoChevronIcon width={rs(17)} height={rs(17)} color="#0D0D0D" />
-            </Pressable>
+            </TouchableOpacity>
           )}
         />
       </View>

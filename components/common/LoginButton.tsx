@@ -1,5 +1,6 @@
 import React from "react";
-import { Pressable, StyleSheet, Text } from "react-native";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
+import { StyleSheet, Text } from "react-native";
 import { rfs, rs } from "@/theme";
 
 type Props = {
@@ -8,9 +9,9 @@ type Props = {
 
 export default function LoginButton({ onPress }: Props) {
   return (
-    <Pressable onPress={onPress} style={styles.btn}>
+    <TouchableOpacity onPress={onPress} style={styles.btn}>
       <Text style={styles.text}>로그인 / 회원가입</Text>
-    </Pressable>
+    </TouchableOpacity>
   );
 }
 

@@ -3,9 +3,10 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import ExclamationIcon from "@/assets/icon/button/ExclamationIcon";
 import EditIcon from "@/assets/icon/button/EditIcon";
+import LoginIcon from "@/assets/icon/button/LoginIcon";
 
-import LoginButton from "@/components/common/LoginButton";
 import ProfileAvatar from "@/components/my/ProfileAvatar";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 import { useAuth } from "@/hooks/useAuth";
 import { font } from "@/theme/typography";
 import { rfs, rs } from "@/theme";
@@ -48,7 +49,12 @@ export default function Profile({
           </View>
         </View>
 
-        <LoginButton onPress={onPressLogin} />
+        <View style={styles.loginBtnRow}>
+          <Pressable style={styles.loginBtn} onPress={onPressLogin}>
+            <LoginIcon width={rs(24)} height={rs(24)} stroke="#FEFEFE" />
+            <Text style={styles.loginBtnText}>로그인 / 회원가입</Text>
+          </Pressable>
+        </View>
       </View>
     );
   }
@@ -75,9 +81,9 @@ export default function Profile({
         <Text style={styles.days}>새록과 함께한지 +{joinedDays}일</Text>
       </View>
 
-      <Pressable onPress={onPressEdit} hitSlop={rs(10)} style={styles.editBtn}>
+      <TouchableOpacity onPress={onPressEdit} hitSlop={rs(10)} style={styles.editBtn}>
         <EditIcon width={rs(24)} height={rs(24)} color="#0D0D0D" />
-      </Pressable>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -89,13 +95,36 @@ const styles = StyleSheet.create({
     width: rs(30),
     height: rs(30),
     borderRadius: rs(999),
-    borderWidth: rs(2),
-    borderColor: "#2563EB",
-    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
   },
-  guestText: { fontSize: rfs(15), color: "#0D0D0D" },
+  guestText: {
+    fontSize: rfs(15),
+    fontWeight: "400",
+    lineHeight: rfs(18),
+    color: "#0D0D0D",
+  },
+  loginBtnRow: {
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "flex-start",
+  },
+  loginBtn: {
+    height: rs(40),
+    paddingHorizontal: rs(15),
+    paddingVertical: rs(9),
+    borderRadius: rs(30.5),
+    backgroundColor: "#4190FF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: rs(8),
+  },
+  loginBtnText: {
+    fontSize: rfs(15),
+    lineHeight: rfs(18),
+    color: "#FEFEFE",
+  },
 
   wrap: {
     width: "100%",

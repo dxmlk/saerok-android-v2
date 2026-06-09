@@ -6,11 +6,12 @@ import NestIcon from "@/assets/icon/nav/NestIcon";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useRouter } from "expo-router";
 import React from "react";
-import { Pressable, Text, View, StyleSheet } from "react-native";
+import { Text, View, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { tabBarHeightAtom } from "@/states/tabBarAtom";
 import { useSetRecoilState } from "recoil";
 import { rfs, rs } from "@/theme";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 
 const ICONS: Record<string, React.FC<any>> = {
   saerok: SaerokIcon,
@@ -66,7 +67,6 @@ export default function FloatingTabBar({
 
             if (event.defaultPrevented) return;
             router.replace(`/(tabs)/${route.name}` as any);
-
           };
 
           const Icon = ICONS[name];
@@ -75,7 +75,7 @@ export default function FloatingTabBar({
             name === "nest" ? { dotColor: isFocused ? "#ffffff" : color } : {};
 
           return (
-            <Pressable
+            <TouchableOpacity
               key={route.key}
               onPress={onPress}
               style={[styles.item, !isCenter && styles.itemGap]}
@@ -90,7 +90,7 @@ export default function FloatingTabBar({
                 {...iconProps}
               />
               <Text style={[styles.label, { color }]}>{LABELS[name]}</Text>
-            </Pressable>
+            </TouchableOpacity>
           );
         })}
       </View>

@@ -6,7 +6,6 @@ import { font } from "@/theme/typography";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
@@ -15,8 +14,24 @@ import {
   View,
 } from "react-native";
 import { rfs, rs } from "@/theme";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 
 type RatioMap = Record<number, number>;
+
+function SaerokSkeletonCard({ tall = false }: { tall?: boolean }) {
+  return (
+    <View style={styles.card}>
+      <View
+        style={[
+          styles.imgBase,
+          styles.skeletonBlock,
+          tall ? styles.skeletonImageTall : styles.imgFallbackSquare,
+        ]}
+      />
+      <View style={styles.skeletonCaption} />
+    </View>
+  );
+}
 
 export default function SaerokList({
   refreshKey = 0,
@@ -93,7 +108,7 @@ export default function SaerokList({
 
   if (!isLoggedIn) {
     return (
-      <View style={styles.screenBg}>
+      <View style={[styles.screenBg, styles.screenBgWhite]}>
         <View style={styles.loginWrap}>
           <Text style={styles.loginUpper}>로그인이 필요한 서비스예요.</Text>
           <Text style={styles.loginLower}>
@@ -117,13 +132,28 @@ export default function SaerokList({
   return (
     <View style={styles.screenBg}>
       {loading ? (
-        <View style={{ paddingVertical: rs(24) }}>
-          <ActivityIndicator />
-        </View>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.masonryRow}>
+            <View style={styles.col}>
+              <SaerokSkeletonCard />
+              <SaerokSkeletonCard tall />
+              <SaerokSkeletonCard />
+            </View>
+            <View style={styles.col}>
+              <SaerokSkeletonCard tall />
+              <SaerokSkeletonCard />
+              <SaerokSkeletonCard tall />
+            </View>
+          </View>
+        </ScrollView>
       ) : !items.length ? (
         <View style={{ paddingHorizontal: rs(24), paddingVertical: rs(16) }}>
           <EmptyState
-            bgColor="white"
+            bgColor="gray"
             upperText="아직 발견한 새가 없어요!"
             lowerText="오른쪽 깃털 버튼을 눌러 탐조 기록을 시작해보세요."
           />
@@ -136,14 +166,12 @@ export default function SaerokList({
           <View style={styles.masonryRow}>
             <View style={styles.col}>
               {leftItems.map((item) => (
-                <Pressable
+                <TouchableOpacity
                   key={item.collectionId}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/saerok/[collectionId]",
-                      params: { collectionId: String(item.collectionId) },
-                    })
-                  }
+                  onPress={() => {
+                    const { openSaerokDetail } = require("@/lib/navigation");
+                    openSaerokDetail(router, item.collectionId, { from: "saerok_list" });
+                  }}
                   style={styles.card}
                 >
                   <Image
@@ -159,20 +187,18 @@ export default function SaerokList({
                   <Text numberOfLines={1} style={styles.caption}>
                     {item.koreanName ?? "이름 모를 새"}
                   </Text>
-                </Pressable>
+                </TouchableOpacity>
               ))}
             </View>
 
             <View style={styles.col}>
               {rightItems.map((item) => (
-                <Pressable
+                <TouchableOpacity
                   key={item.collectionId}
-                  onPress={() =>
-                    router.push({
-                      pathname: "/saerok/[collectionId]",
-                      params: { collectionId: String(item.collectionId) },
-                    })
-                  }
+                  onPress={() => {
+                    const { openSaerokDetail } = require("@/lib/navigation");
+                    openSaerokDetail(router, item.collectionId, { from: "saerok_list" });
+                  }}
                   style={styles.card}
                 >
                   <Image
@@ -188,7 +214,7 @@ export default function SaerokList({
                   <Text numberOfLines={1} style={styles.caption}>
                     {item.koreanName ?? "이름 모를 새"}
                   </Text>
-                </Pressable>
+                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -202,6 +228,9 @@ const styles = StyleSheet.create({
   screenBg: {
     flex: 1,
     backgroundColor: "transparent",
+  },
+  screenBgWhite: {
+    backgroundColor: "#FFFFFF",
   },
   loginWrap: {
     marginTop: rs(10),
@@ -298,5 +327,19 @@ const styles = StyleSheet.create({
     color: "#000000",
     alignSelf: "flex-start",
     marginLeft: rs(7),
+  },
+  skeletonBlock: {
+    backgroundColor: "#E8ECEB",
+  },
+  skeletonImageTall: {
+    aspectRatio: 0.78,
+  },
+  skeletonCaption: {
+    width: "58%",
+    height: rs(13),
+    borderRadius: rs(7),
+    alignSelf: "flex-start",
+    marginLeft: rs(7),
+    backgroundColor: "#E8ECEB",
   },
 });

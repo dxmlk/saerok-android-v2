@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useRef, useState } from "react";
+﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
@@ -13,6 +13,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import BracketIcon from "@/assets/icon/common/BracketIcon";
 import FilterCheckIcon from "@/assets/icon/dex/FilterCheckIcon";
@@ -26,6 +27,7 @@ import SeasonIcon from "@/assets/icon/icon/SeasonIcon";
 import HabitatIcon from "@/assets/icon/icon/HabitatIcon";
 import SizeIcon from "@/assets/icon/icon/SizeIcon";
 import ResetIcon from "@/assets/icon/icon/ResetIcon";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 import { font, rfs, rs } from "@/theme";
 
 export type SelectedFilters = {
@@ -154,11 +156,29 @@ const SIZES: SizeOptionItem[] = [
   },
 ];
 
+const normalizeFilterValues = (values: string[]) =>
+  Array.from(
+    new Set(
+      values
+        .map((value) => value.trim())
+        .filter((value) => value.length > 0),
+    ),
+  );
+
 export default function FilterHeader({
   selectedFilters,
   onFilterChange,
   onResetSearch,
 }: Props) {
+  const insets = useSafeAreaInsets();
+  const normalizedSelectedFilters = useMemo(
+    () => ({
+      seasons: normalizeFilterValues(selectedFilters.seasons),
+      habitats: normalizeFilterValues(selectedFilters.habitats),
+      sizeCategories: normalizeFilterValues(selectedFilters.sizeCategories),
+    }),
+    [selectedFilters],
+  );
   const [fallbackMounted, setFallbackMounted] = useState(false);
   const [fallbackGroup, setFallbackGroup] = useState<FilterKind>("seasons");
   const [draftFilters, setDraftFilters] = useState<SelectedFilters>({
@@ -172,16 +192,16 @@ export default function FilterHeader({
   const openFallback = (groupKey: FilterKind) => {
     setFallbackGroup(groupKey);
     setDraftFilters({
-      seasons: [...selectedFilters.seasons],
-      habitats: [...selectedFilters.habitats],
-      sizeCategories: [...selectedFilters.sizeCategories],
+      seasons: [...normalizedSelectedFilters.seasons],
+      habitats: [...normalizedSelectedFilters.habitats],
+      sizeCategories: [...normalizedSelectedFilters.sizeCategories],
     });
     setFallbackMounted(true);
     sheetTranslateY.setValue(40);
     requestAnimationFrame(() => {
       Animated.timing(sheetTranslateY, {
         toValue: 0,
-        duration: 140,
+        duration: 220,
         easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
@@ -191,7 +211,7 @@ export default function FilterHeader({
   const closeFallback = () => {
     Animated.timing(sheetTranslateY, {
       toValue: 30,
-      duration: 100,
+      duration: 180,
       easing: Easing.in(Easing.cubic),
       useNativeDriver: true,
     }).start(() => setFallbackMounted(false));
@@ -216,12 +236,17 @@ export default function FilterHeader({
           habitats: HABITATS.map((o) => o.value),
           sizeCategories: SIZES.map((o) => o.value),
         },
-        selectedFilters,
+        normalizedSelectedFilters,
       );
-      if (result?.seasons) onFilterChange("seasons", result.seasons);
-      if (result?.habitats) onFilterChange("habitats", result.habitats);
+      if (result?.seasons)
+        onFilterChange("seasons", normalizeFilterValues(result.seasons));
+      if (result?.habitats)
+        onFilterChange("habitats", normalizeFilterValues(result.habitats));
       if (result?.sizeCategories)
-        onFilterChange("sizeCategories", result.sizeCategories);
+        onFilterChange(
+          "sizeCategories",
+          normalizeFilterValues(result.sizeCategories),
+        );
     } catch (e) {
       console.log("[FilterHeader] FilterSheetModule.show failed", e);
       openFallback(groupKey);
@@ -229,11 +254,25 @@ export default function FilterHeader({
   };
 
   const resetAll = () => {
+    setDraftFilters({
+      seasons: [],
+      habitats: [],
+      sizeCategories: [],
+    });
     onFilterChange("seasons", []);
     onFilterChange("habitats", []);
     onFilterChange("sizeCategories", []);
     onResetSearch?.();
   };
+
+  useEffect(() => {
+    if (fallbackMounted) return;
+    setDraftFilters({
+      seasons: [...normalizedSelectedFilters.seasons],
+      habitats: [...normalizedSelectedFilters.habitats],
+      sizeCategories: [...normalizedSelectedFilters.sizeCategories],
+    });
+  }, [fallbackMounted, normalizedSelectedFilters]);
 
   const currentIndex = FILTER_ORDER.indexOf(fallbackGroup);
   const canPrev = true;
@@ -250,7 +289,10 @@ export default function FilterHeader({
   };
 
   const setGroupValues = (group: FilterKind, values: string[]) => {
-    const next = { ...draftFilters, [group]: values };
+    const next = {
+      ...draftFilters,
+      [group]: normalizeFilterValues(values),
+    };
     setDraftFilters(next);
     onFilterChange("seasons", next.seasons);
     onFilterChange("habitats", next.habitats);
@@ -262,7 +304,10 @@ export default function FilterHeader({
     const nextValues = list.includes(value)
       ? list.filter((v) => v !== value)
       : [...list, value];
-    const nextDraft = { ...draftFilters, [group]: nextValues };
+    const nextDraft = {
+      ...draftFilters,
+      [group]: normalizeFilterValues(nextValues),
+    };
     setDraftFilters(nextDraft);
     onFilterChange("seasons", nextDraft.seasons);
     onFilterChange("habitats", nextDraft.habitats);
@@ -296,7 +341,7 @@ export default function FilterHeader({
         {SEASONS.map((item) => {
           const active = selected.includes(item.value);
           return (
-            <Pressable
+            <TouchableOpacity
               key={`season-${item.value}`}
               style={[
                 styles.seasonTile,
@@ -313,7 +358,7 @@ export default function FilterHeader({
                 {item.label}
               </Text>
               {renderCheckbox(active)}
-            </Pressable>
+            </TouchableOpacity>
           );
         })}
       </View>
@@ -327,7 +372,7 @@ export default function FilterHeader({
     return (
       <View>
         <View style={styles.habitatTopRow}>
-          <Pressable
+          <TouchableOpacity
             style={styles.selectAllRow}
             onPress={() =>
               setGroupValues(
@@ -344,13 +389,13 @@ export default function FilterHeader({
           >
             {renderCheckbox(allSelected, true)}
             <Text style={styles.selectAllText}>전체선택</Text>
-          </Pressable>
+          </TouchableOpacity>
         </View>
         <View style={styles.habitatGrid}>
           {HABITATS.map((item) => {
             const active = selected.includes(item.value);
             return (
-              <Pressable
+              <TouchableOpacity
                 key={`habitat-${item.value}`}
                 style={[styles.habitatTile, active && styles.habitatTileActive]}
                 onPress={() => toggleInGroup("habitats", item.value)}
@@ -364,7 +409,7 @@ export default function FilterHeader({
                   {item.label}
                 </Text>
                 {renderCheckbox(active)}
-              </Pressable>
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -412,7 +457,7 @@ export default function FilterHeader({
           const marginRight =
             index === SIZES.length - 1 ? 0 : rs(item.gapRight) * gapScale;
           return (
-            <Pressable
+            <TouchableOpacity
               key={`size-${item.value}`}
               style={[styles.sizeCol, { width: colWidth, marginRight }]}
               onPress={() => toggleInGroup("sizeCategories", item.value)}
@@ -438,7 +483,7 @@ export default function FilterHeader({
                 {item.label}
               </Text>
               <Text style={styles.sizeSub}>{item.subLabel}</Text>
-            </Pressable>
+            </TouchableOpacity>
           );
         })}
       </View>
@@ -476,56 +521,69 @@ export default function FilterHeader({
     <>
       <View style={styles.row}>
         {(() => {
-          const seasonsActive = selectedFilters.seasons.length > 0;
-          const habitatsActive = selectedFilters.habitats.length > 0;
-          const sizesActive = selectedFilters.sizeCategories.length > 0;
+          const seasonsActive = normalizedSelectedFilters.seasons.length > 0;
+          const habitatsActive = normalizedSelectedFilters.habitats.length > 0;
+          const sizesActive =
+            normalizedSelectedFilters.sizeCategories.length > 0;
           return (
             <>
-        <Pressable
-          style={[styles.btn, seasonsActive && styles.btnActive]}
-          onPress={() => openNativeSheet("seasons")}
-        >
-          <SeasonIcon
-            width={rs(24)}
-            height={rs(25)}
-            color={seasonsActive ? "#FEFEFE" : "#4190FF"}
-          />
-          <Text style={[styles.btnText, seasonsActive && styles.btnTextActive]}>
-            {BUTTON_LABELS.seasons}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.btn, habitatsActive && styles.btnActive]}
-          onPress={() => openNativeSheet("habitats")}
-        >
-          <HabitatIcon
-            width={rs(24)}
-            height={rs(24)}
-            color={habitatsActive ? "#FEFEFE" : "#4190FF"}
-          />
-          <Text style={[styles.btnText, habitatsActive && styles.btnTextActive]}>
-            {BUTTON_LABELS.habitats}
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[styles.btn, sizesActive && styles.btnActive]}
-          onPress={() => openNativeSheet("sizeCategories")}
-        >
-          <SizeIcon
-            width={rs(24)}
-            height={rs(24)}
-            color={sizesActive ? "#FEFEFE" : "#4190FF"}
-          />
-          <Text style={[styles.btnText, sizesActive && styles.btnTextActive]}>
-            {BUTTON_LABELS.sizeCategories}
-          </Text>
-        </Pressable>
+              <TouchableOpacity
+                style={[styles.btn, seasonsActive && styles.btnActive]}
+                onPress={() => openNativeSheet("seasons")}
+              >
+                <SeasonIcon
+                  width={rs(24)}
+                  height={rs(25)}
+                  color={seasonsActive ? "#FEFEFE" : "#4190FF"}
+                />
+                <Text
+                  style={[
+                    styles.btnText,
+                    seasonsActive && styles.btnTextActive,
+                  ]}
+                >
+                  {BUTTON_LABELS.seasons}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btn, habitatsActive && styles.btnActive]}
+                onPress={() => openNativeSheet("habitats")}
+              >
+                <HabitatIcon
+                  width={rs(24)}
+                  height={rs(24)}
+                  color={habitatsActive ? "#FEFEFE" : "#4190FF"}
+                />
+                <Text
+                  style={[
+                    styles.btnText,
+                    habitatsActive && styles.btnTextActive,
+                  ]}
+                >
+                  {BUTTON_LABELS.habitats}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.btn, sizesActive && styles.btnActive]}
+                onPress={() => openNativeSheet("sizeCategories")}
+              >
+                <SizeIcon
+                  width={rs(24)}
+                  height={rs(24)}
+                  color={sizesActive ? "#FEFEFE" : "#4190FF"}
+                />
+                <Text
+                  style={[styles.btnText, sizesActive && styles.btnTextActive]}
+                >
+                  {BUTTON_LABELS.sizeCategories}
+                </Text>
+              </TouchableOpacity>
             </>
           );
         })()}
-        <Pressable style={styles.resetBtn} onPress={resetAll} hitSlop={rs(6)}>
+        <TouchableOpacity style={styles.resetBtn} onPress={resetAll} hitSlop={rs(6)}>
           <ResetIcon width={rs(17)} height={rs(17)} color="#0D0D0D" />
-        </Pressable>
+        </TouchableOpacity>
       </View>
 
       <Modal
@@ -543,7 +601,7 @@ export default function FilterHeader({
           >
             <Pressable onPress={(e) => e.stopPropagation()}>
               <View style={styles.panelHeader}>
-                <Pressable
+                <TouchableOpacity
                   style={styles.headerArrowBtn}
                   disabled={!canPrev}
                   onPress={goPrevGroup}
@@ -559,9 +617,9 @@ export default function FilterHeader({
                     height={rs(17)}
                     color={canPrev ? "#91BFFF" : "#D5DCE8"}
                   />
-                </Pressable>
+                </TouchableOpacity>
                 <Text style={styles.panelTitle}>{LABELS[fallbackGroup]}</Text>
-                <Pressable
+                <TouchableOpacity
                   style={styles.headerArrowBtn}
                   disabled={!canNext}
                   onPress={goNextGroup}
@@ -579,7 +637,7 @@ export default function FilterHeader({
                       color={canNext ? "#91BFFF" : "#D5DCE8"}
                     />
                   </View>
-                </Pressable>
+                </TouchableOpacity>
               </View>
 
               <View
@@ -589,10 +647,15 @@ export default function FilterHeader({
                 {renderPage()}
               </View>
 
-              <View style={styles.panelFooter}>
-                <Pressable style={styles.doneBtn} onPress={closeFallback}>
+              <View
+                style={[
+                  styles.panelFooter,
+                  { paddingBottom: Math.max(insets.bottom, 0) },
+                ]}
+              >
+                <TouchableOpacity style={styles.doneBtn} onPress={closeFallback}>
                   <Text style={styles.doneText}>완료</Text>
-                </Pressable>
+                </TouchableOpacity>
               </View>
             </Pressable>
           </Animated.View>
@@ -608,7 +671,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: rs(16),
     paddingTop: rs(16),
-    paddingBottom: rs(20),
+    paddingBottom: rs(8),
     gap: rs(6),
   },
   btn: {
@@ -696,7 +759,6 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "#E8E8E8",
     paddingTop: rs(26),
-    paddingBottom: rs(46),
     alignItems: "center",
     justifyContent: "center",
   },
@@ -857,3 +919,5 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
+
+

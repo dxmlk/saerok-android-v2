@@ -1,9 +1,10 @@
 ﻿import React, { forwardRef, useState } from "react";
-import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { StyleSheet, TextInput, View } from "react-native";
 import { rfs, rs } from "../../theme";
 import BackSmallIcon from "@/assets/icon/button/BackSmallIcon";
 import SearchSmallIcon from "@/assets/icon/button/SearchSmallIcon";
 import DeleteSmallIcon from "@/assets/icon/button/DeleteSmallIcon";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 
 type Props = {
   value: string;
@@ -44,13 +45,13 @@ const SearchBar = forwardRef<TextInput, Props>(
           {hideLeftIcon ? (
             <View style={styles.leftIcon} />
           ) : showBack ? (
-            <Pressable
+            <TouchableOpacity
               onPress={onBack}
               hitSlop={rs(10)}
               style={styles.leftIcon}
             >
               <BackSmallIcon width={rs(17)} height={rs(17)} color="#91BFFF" />
-            </Pressable>
+            </TouchableOpacity>
           ) : (
             <View style={styles.leftIcon}>
               <SearchSmallIcon width={rs(22)} height={rs(22)} color="#D1D5DB" />
@@ -65,6 +66,7 @@ const SearchBar = forwardRef<TextInput, Props>(
             placeholderTextColor="#9CA3AF"
             style={styles.input}
             returnKeyType="search"
+            blurOnSubmit={false}
             onSubmitEditing={onSubmit}
             onFocus={() => {
               setFocused(true);
@@ -78,13 +80,13 @@ const SearchBar = forwardRef<TextInput, Props>(
           />
 
           {value.length > 0 ? (
-            <Pressable
+            <TouchableOpacity
               onPress={onClear}
               hitSlop={rs(10)}
               style={styles.rightIcon}
             >
               <DeleteSmallIcon width={rs(15)} height={rs(15)} color="#979797" />
-            </Pressable>
+            </TouchableOpacity>
           ) : (
             <View style={styles.rightIcon} />
           )}

@@ -1,3 +1,5 @@
+import { trackApiRequest } from "@/services/apiLoading";
+
 export type ReverseGeocodeResult = {
   roadAddress?: string;
   jibunAddress?: string;
@@ -20,12 +22,16 @@ export async function reverseGeocodeNaver(
     "&orders=roadaddr,addr" +
     "&output=json";
 
-  const res = await fetch(url, {
-    headers: {
-      "X-NCP-APIGW-API-KEY-ID": clientId,
-      "X-NCP-APIGW-API-KEY": clientSecret,
-    },
-  });
+  const res = await trackApiRequest(
+    () =>
+      fetch(url, {
+        headers: {
+          "X-NCP-APIGW-API-KEY-ID": clientId,
+          "X-NCP-APIGW-API-KEY": clientSecret,
+        },
+      }),
+    { showOverlay: false },
+  );
 
   if (!res.ok) {
     throw new Error(`Naver reverse geocode failed: ${res.status}`);
@@ -67,4 +73,3 @@ export async function reverseGeocodeNaver(
     jibunAddress: jibun || "",
   };
 }
-

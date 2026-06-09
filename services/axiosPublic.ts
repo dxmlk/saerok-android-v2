@@ -1,5 +1,6 @@
 import axios from "axios";
 import { Platform } from "react-native";
+import { beginApiRequest } from "@/services/apiLoading";
 
 function resolveBaseURL() {
   const env = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -20,5 +21,30 @@ const axiosPublic = axios.create({
   timeout: 15000,
   withCredentials: true,
 });
+
+axiosPublic.interceptors.request.use(
+  (config) => {
+    const method = config.method?.toLowerCase() ?? "get";
+    const explicitShowOverlay = (config as any).showOverlay;
+    const showOverlay =
+      typeof explicitShowOverlay === "boolean"
+        ? explicitShowOverlay
+        : !["get", "head", "options"].includes(method);
+    (config as any).__endApiLoading = beginApiRequest({ showOverlay });
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
+
+axiosPublic.interceptors.response.use(
+  (res) => {
+    (res.config as any).__endApiLoading?.();
+    return res;
+  },
+  (error) => {
+    error?.config?.__endApiLoading?.();
+    return Promise.reject(error);
+  },
+);
 
 export default axiosPublic;

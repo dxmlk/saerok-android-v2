@@ -4,6 +4,7 @@ import { Platform } from "react-native";
 import axiosPublic from "@/services/axiosPublic";
 import { refreshAccessTokenApi } from "@/services/api/auth";
 import { emitAuthExpired } from "./authEvents";
+import { beginApiRequest } from "@/services/apiLoading";
 
 function resolveBaseURL() {
   const env = process.env.EXPO_PUBLIC_API_BASE_URL;
@@ -24,6 +25,27 @@ const axiosPrivate = axios.create({
 
 axiosPrivate.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
+    if ((config as any).skipApiLoading) {
+      const token = await getAccessToken();
+
+      if (token) {
+        config.headers?.set?.("Authorization", `Bearer ${token}`);
+      }
+
+      console.log(
+        `[API ➜] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`,
+      );
+      return config;
+    }
+
+    const method = config.method?.toLowerCase() ?? "get";
+    const explicitShowOverlay = (config as any).showOverlay;
+    const showOverlay =
+      typeof explicitShowOverlay === "boolean"
+        ? explicitShowOverlay
+        : !["get", "head", "options"].includes(method);
+    const endApiLoading = beginApiRequest({ showOverlay });
+    (config as any).__endApiLoading = endApiLoading;
     const token = await getAccessToken();
 
     if (token) {
@@ -39,6 +61,17 @@ axiosPrivate.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error),
+);
+
+axiosPrivate.interceptors.response.use(
+  (res) => {
+    (res.config as any).__endApiLoading?.();
+    return res;
+  },
+  (error) => {
+    error?.config?.__endApiLoading?.();
+    return Promise.reject(error);
+  },
 );
 
 let isRefreshing = false;

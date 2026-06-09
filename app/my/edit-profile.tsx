@@ -1,8 +1,7 @@
-import React, { useMemo, useState } from "react";
+﻿import React, { useMemo, useState } from "react";
 import {
-  Alert,
-  Image,
-  Pressable,
+  ActivityIndicator,
+  Modal,
   ScrollView,
   StyleSheet,
   View,
@@ -12,6 +11,9 @@ import { useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 
 import SimpleHeader from "@/components/common/SimpleHeader";
+import AppAlertModal from "@/components/common/AppAlertModal";
+import AppConfirmModal from "@/components/common/AppConfirmModal";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 import NicknameInput from "@/components/my/NicknameInput";
 import EditFooter from "@/components/common/EditFooter";
 
@@ -23,10 +25,11 @@ import {
   presignProfileImage,
   updateUserInfo,
 } from "@/services/api/user";
+import { trackApiRequest } from "@/services/apiLoading";
 import { useAuth } from "@/hooks/useAuth";
 import { rs } from "@/theme";
 
-const DEFAULT_HELPER = "닉네임은 14일에 한 번씩 변경할 수 있어요.";
+const DEFAULT_HELPER = "닉네임은 14일에 한 번만 변경할 수 있어요";
 
 function guessContentType(uri: string) {
   const lower = uri.toLowerCase();
@@ -45,53 +48,68 @@ export default function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
 
   const [localUri, setLocalUri] = useState<string | null>(null);
+  const [pendingProfileImageUri, setPendingProfileImageUri] = useState<string | null>(null);
   const [avatarCacheKey, setAvatarCacheKey] = useState<number>(Date.now());
+  const [alertModal, setAlertModal] = useState<{
+    visible: boolean;
+    mainText: string;
+    subText: string;
+    buttonText: string;
+    onConfirm?: (() => void) | null;
+  }>({
+    visible: false,
+    mainText: "",
+    subText: "",
+    buttonText: "",
+    onConfirm: null,
+  });
+  const [confirmModalOpen, setConfirmModalOpen] = useState(false);
 
   const seed = (nickname.trim() || user?.email?.trim() || "user").toLowerCase();
   const avatarUrl = user?.thumbnailImageUrl || user?.profileImageUrl || null;
   const shownAvatarUrl = localUri || avatarUrl;
 
+  const openAlertModal = (params: {
+    mainText: string;
+    subText?: string;
+    buttonText?: string;
+    onConfirm?: (() => void) | null;
+  }) => {
+    setAlertModal({
+      visible: true,
+      mainText: params.mainText,
+      subText: params.subText ?? "",
+      buttonText: params.buttonText ?? "확인",
+      onConfirm: params.onConfirm ?? null,
+    });
+  };
+
+  const closeAlertModal = () =>
+    setAlertModal((prev) => ({ ...prev, visible: false, onConfirm: null }));
+
   const canSubmit = useMemo(() => {
     return nickname.trim().length > 0 && isNicknameAvailable && !saving;
   }, [nickname, isNicknameAvailable, saving]);
 
-  const openImagePicker = async () => {
-    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!perm.granted) {
-      Alert.alert("권한 필요", "사진 접근 권한이 필요합니다.");
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.9,
-    });
-
-    if (result.canceled) return;
-    const uri = result.assets?.[0]?.uri;
-    if (!uri) return;
-
-    setLocalUri(uri);
-
+  const uploadProfileImage = async (uri: string) => {
     try {
       setSaving(true);
 
       const contentType = guessContentType(uri);
-
       const { presignedUrl, objectKey } = await presignProfileImage({
         contentType,
       });
 
-      const fileRes = await fetch(uri);
+      const fileRes = await trackApiRequest(() => fetch(uri));
       const blob = await fileRes.blob();
 
-      const putRes = await fetch(presignedUrl, {
-        method: "PUT",
-        headers: { "Content-Type": contentType },
-        body: blob,
-      });
+      const putRes = await trackApiRequest(() =>
+        fetch(presignedUrl, {
+          method: "PUT",
+          headers: { "Content-Type": contentType },
+          body: blob,
+        }),
+      );
 
       if (!putRes.ok) throw new Error(`S3 업로드 실패 (${putRes.status})`);
 
@@ -116,16 +134,60 @@ export default function EditProfileScreen() {
       setUser(nextUser);
       setAvatarCacheKey(Date.now());
       setLocalUri(null);
+      setPendingProfileImageUri(null);
 
       await refreshUser({ silent: true });
 
-      Alert.alert("완료", "프로필 사진이 변경되었습니다.");
+      openAlertModal({
+        mainText: "완료",
+        subText: "프로필 사진이 변경되었습니다.",
+      });
     } catch (e: any) {
       setLocalUri(null);
-      Alert.alert("실패", e?.message || "프로필 사진 업로드에 실패했습니다.");
+      setPendingProfileImageUri(null);
+      openAlertModal({
+        mainText: "실패",
+        subText: e?.message || "프로필 사진 업로드에 실패했습니다.",
+      });
     } finally {
       setSaving(false);
     }
+  };
+
+  const openImagePicker = async () => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      openAlertModal({
+        mainText: "권한 필요",
+        subText: "사진 접근 권한이 필요합니다.",
+      });
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.9,
+    });
+
+    if (result.canceled) return;
+    const uri = result.assets?.[0]?.uri;
+    if (!uri) return;
+
+    setLocalUri(uri);
+    setPendingProfileImageUri(uri);
+    setConfirmModalOpen(true);
+  };
+
+  const handleCancelProfileImageChange = () => {
+    setLocalUri(null);
+    setPendingProfileImageUri(null);
+  };
+
+  const handleConfirmProfileImageChange = () => {
+    if (!pendingProfileImageUri) return;
+    void uploadProfileImage(pendingProfileImageUri);
   };
 
   const handleSubmitNickname = async () => {
@@ -145,16 +207,19 @@ export default function EditProfileScreen() {
       setUser(nextUser);
       await refreshUser({ silent: true });
 
-      Alert.alert("완료", "닉네임이 변경되었습니다.", [
-        { text: "확인", onPress: () => router.replace("/my") },
-      ]);
+      openAlertModal({
+        mainText: "완료",
+        subText: "닉네임이 변경되었습니다.",
+        onConfirm: () => router.replace("/my"),
+      });
     } catch (err: any) {
-      Alert.alert(
-        "실패",
-        err?.response?.data?.message ||
+      openAlertModal({
+        mainText: "실패",
+        subText:
+          err?.response?.data?.message ||
           err?.message ||
           "닉네임 변경에 실패했습니다. 다시 시도해 주세요.",
-      );
+      });
     } finally {
       setSaving(false);
     }
@@ -171,7 +236,7 @@ export default function EditProfileScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.avatarWrap}>
-            <Pressable
+            <TouchableOpacity
               onPress={openImagePicker}
               style={styles.avatarBox}
               hitSlop={rs(8)}
@@ -187,7 +252,7 @@ export default function EditProfileScreen() {
               <View style={styles.editBadge}>
                 <EditIcon width={rs(24)} height={rs(24)} color="#0D0D0D" />
               </View>
-            </Pressable>
+            </TouchableOpacity>
           </View>
 
           <NicknameInput
@@ -196,6 +261,7 @@ export default function EditProfileScreen() {
               setNickname(v);
               setIsNicknameAvailable(false);
             }}
+            initialNickname={user?.nickname ?? ""}
             onCheckResult={(ok) => setIsNicknameAvailable(ok)}
             checkNicknameAvailable={checkNicknameAvailable}
             helperText={DEFAULT_HELPER}
@@ -203,11 +269,36 @@ export default function EditProfileScreen() {
         </ScrollView>
 
         <EditFooter
-          text={saving ? "변경 중..." : "닉네임 변경하기"}
+          text="닉네임 변경하기"
           disabled={!canSubmit}
           onClick={handleSubmitNickname}
         />
       </View>
+
+      <AppConfirmModal
+        visible={confirmModalOpen}
+        mainText="프로필 사진을 변경하시겠어요?"
+        leftText="취소"
+        rightText="변경하기"
+        onClose={() => setConfirmModalOpen(false)}
+        onLeft={handleCancelProfileImageChange}
+        onRight={handleConfirmProfileImageChange}
+      />
+
+      <AppAlertModal
+        visible={alertModal.visible}
+        mainText={alertModal.mainText}
+        subText={alertModal.subText}
+        buttonText={alertModal.buttonText}
+        onClose={closeAlertModal}
+        onConfirm={alertModal.onConfirm}
+      />
+
+      <Modal transparent visible={saving} animationType="none">
+        <View style={styles.loadingOverlay} pointerEvents="auto">
+          <ActivityIndicator size="large" color="#FFFFFF" />
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -246,5 +337,12 @@ const styles = StyleSheet.create({
     shadowRadius: rs(6),
     shadowOffset: { width: rs(0), height: rs(2) },
     elevation: 3,
+  },
+
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.28)",
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

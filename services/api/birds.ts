@@ -30,7 +30,11 @@ export const fetchBookmarkListApi = () => {
 };
 
 export const toggleBookmarkApi = (birdId: number) => {
-  return axiosPrivate.post(`/birds/bookmarks/${birdId}/toggle`);
+  return axiosPrivate.post(
+    `/birds/bookmarks/${birdId}/toggle`,
+    undefined,
+    { showOverlay: false } as any,
+  );
 };
 
 export interface BirdInfo {

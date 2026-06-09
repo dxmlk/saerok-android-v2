@@ -1,9 +1,8 @@
-import * as ImagePicker from "expo-image-picker";
+﻿import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Image as RNImage,
   KeyboardAvoidingView,
   Modal,
@@ -38,6 +37,9 @@ import AddImageIcon from "@/assets/icon/button/AddImageIcon";
 import CheckIcon from "@/assets/icon/common/CheckIcon";
 import MapIcon from "@/assets/icon/nav/MapIcon";
 import InfoChevronIcon from "@/assets/icon/saerok/InfoChevronIcon";
+import AppAlertModal from "@/components/common/AppAlertModal";
+import AppConfirmModal from "@/components/common/AppConfirmModal";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 
 const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 const CALENDAR_COL_WIDTH_PCT = 100 / 7;
@@ -86,7 +88,9 @@ export default function SaerokWriteScreen() {
   const idNum = collectionId ? Number(collectionId) : null;
 
   const initializedRef = useRef(false);
+  const submitLockRef = useRef(false);
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [calendarCursor, setCalendarCursor] = useState<Date>(() => new Date());
   const [showMonthPicker, setShowMonthPicker] = useState(false);
@@ -96,7 +100,20 @@ export default function SaerokWriteScreen() {
   const [imagePreviewError, setImagePreviewError] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
   const [unknownBird, setUnknownBird] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [alertModal, setAlertModal] = useState<{
+    visible: boolean;
+    mainText: string;
+    subText: string;
+    onConfirm?: (() => void) | null;
+  }>({
+    visible: false,
+    mainText: "",
+    subText: "",
+    onConfirm: null,
+  });
   const scrollRef = useRef<ScrollView>(null);
+  const memoInputRef = useRef<TextInput>(null);
 
   const {
     form,
@@ -114,6 +131,22 @@ export default function SaerokWriteScreen() {
     setImagePreviewUrl,
     resetForm,
   } = useSaerokForm();
+
+  const openAlertModal = (params: {
+    mainText: string;
+    subText: string;
+    onConfirm?: (() => void) | null;
+  }) => {
+    setAlertModal({
+      visible: true,
+      mainText: params.mainText,
+      subText: params.subText,
+      onConfirm: params.onConfirm ?? null,
+    });
+  };
+
+  const closeAlertModal = () =>
+    setAlertModal((prev) => ({ ...prev, visible: false, onConfirm: null }));
 
   useEffect(() => {
     if (initializedRef.current) return;
@@ -159,8 +192,11 @@ export default function SaerokWriteScreen() {
         setImageFile(null);
         setImagePreviewUrl(data.imageUrl ?? null);
       } catch (e: any) {
-        Alert.alert("오류", e?.message ?? "수정 데이터를 불러오지 못했습니다.");
-        router.back();
+        openAlertModal({
+          mainText: "오류",
+          subText: e?.message ?? "수정 데이터를 불러오지 못했습니다.",
+          onConfirm: () => router.back(),
+        });
       } finally {
         setLoadingEdit(false);
       }
@@ -184,29 +220,33 @@ export default function SaerokWriteScreen() {
   const pickImage = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert("권한 없음", "이미지 라이브러리 접근 권한이 필요합니다.");
+      openAlertModal({
+        mainText: "권한 없음",
+        subText: "이미지 라이브러리 접근 권한이 필요합니다.",
+      });
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0.9,
+      mediaTypes: ["images"],
       base64: true,
+      quality: 0.9,
     });
 
     if (result.canceled) return;
 
     const asset = result.assets[0];
+    if (!asset?.uri) return;
     const uri = asset.uri;
     const type = asset.mimeType ?? "image/jpeg";
+    const previewUrl = asset.base64
+      ? `data:${type};base64,${asset.base64}`
+      : uri;
     const name =
       uri.split("/").pop() ?? `photo.${type.includes("png") ? "png" : "jpg"}`;
 
     setImageFile({ uri, name, type });
-    const previewUri = asset.base64
-      ? `data:${type};base64,${asset.base64}`
-      : uri;
-    setImagePreviewUrl(previewUri);
+    setImagePreviewUrl(previewUrl);
     setImagePreviewError(false);
   };
 
@@ -221,30 +261,80 @@ export default function SaerokWriteScreen() {
   };
 
   const canSubmit = useMemo(() => {
+    if (submitting) return false;
     if (!form.date || !form.address || !form.locationAlias || !form.memo)
       return false;
     if (!isEdit && !form.imageFile) return false;
     return true;
-  }, [form, isEdit]);
+  }, [form, isEdit, submitting]);
 
   const calendarCells = useMemo(
     () => buildCalendarCells(calendarCursor),
     [calendarCursor],
   );
+  const previewUri = form.imagePreviewUrl ?? form.imageFile?.uri;
+  const deleteBirdName = form.birdName?.trim() || "이름 없는 새";
+  const submitApiOptions = useMemo(() => ({ skipApiLoading: true }), []);
 
   useEffect(() => {
     setImagePreviewError(false);
-  }, [form.imagePreviewUrl]);
+  }, [previewUri]);
 
   const handleSubmit = async () => {
-    if (!canSubmit) {
-      Alert.alert("입력 확인", "필수 입력 항목이 누락되었습니다.");
+    if (!canSubmit || submitLockRef.current) {
       return;
     }
 
     try {
+      submitLockRef.current = true;
+      setSubmitting(true);
       if (!isEdit) {
-        const collectionRes = await createCollectionApi({
+        const collectionRes = await createCollectionApi(
+          {
+            birdId: form.birdId,
+            discoveredDate: form.date,
+            latitude: form.latitude ?? 0,
+            longitude: form.longitude ?? 0,
+            locationAlias: form.locationAlias,
+            address: form.address,
+            note: form.memo,
+            accessLevel: form.accessLevel,
+          },
+          submitApiOptions,
+        );
+
+        const newId = collectionRes.collectionId;
+
+        const contentType = form.imageFile!.type;
+        const { presignedUrl, objectKey } = await getPresignedUrlApi(
+          newId,
+          contentType,
+          submitApiOptions,
+        );
+
+        await uploadToPresignedUrl(
+          presignedUrl,
+          form.imageFile!.uri,
+          contentType,
+        );
+        await registerImageMetaApi(
+          newId,
+          objectKey,
+          contentType,
+          submitApiOptions,
+        );
+
+        resetForm();
+        router.replace("/(tabs)/saerok");
+        return;
+      }
+
+      if (!idNum) return;
+
+      await patchCollectionApi(
+        idNum,
+        {
+          isBirdIdUpdated: true,
           birdId: form.birdId,
           discoveredDate: form.date,
           latitude: form.latitude ?? 0,
@@ -253,52 +343,20 @@ export default function SaerokWriteScreen() {
           address: form.address,
           note: form.memo,
           accessLevel: form.accessLevel,
-        });
-
-        const newId = collectionRes.collectionId;
-
-        const contentType = form.imageFile!.type;
-        const { presignedUrl, objectKey } = await getPresignedUrlApi(
-          newId,
-          contentType,
-        );
-
-        await uploadToPresignedUrl(
-          presignedUrl,
-          form.imageFile!.uri,
-          contentType,
-        );
-        await registerImageMetaApi(newId, objectKey, contentType);
-
-        Alert.alert("완료", "새록이 성공적으로 작성되었습니다.");
-        resetForm();
-        router.replace("/(tabs)/saerok");
-        return;
-      }
-
-      if (!idNum) return;
-
-      await patchCollectionApi(idNum, {
-        isBirdIdUpdated: true,
-        birdId: form.birdId,
-        discoveredDate: form.date,
-        latitude: form.latitude ?? 0,
-        longitude: form.longitude ?? 0,
-        locationAlias: form.locationAlias,
-        address: form.address,
-        note: form.memo,
-        accessLevel: form.accessLevel,
-      });
+        },
+        submitApiOptions,
+      );
 
       if (form.imageFile) {
         if (form.imageId) {
-          await deleteCollectionImageApi(idNum, form.imageId);
+          await deleteCollectionImageApi(idNum, form.imageId, submitApiOptions);
         }
 
         const contentType = form.imageFile.type;
         const { presignedUrl, objectKey } = await getPresignedUrlApi(
           idNum,
           contentType,
+          submitApiOptions,
         );
 
         await uploadToPresignedUrl(
@@ -306,36 +364,44 @@ export default function SaerokWriteScreen() {
           form.imageFile.uri,
           contentType,
         );
-        const meta = await registerImageMetaApi(idNum, objectKey, contentType);
+        const meta = await registerImageMetaApi(
+          idNum,
+          objectKey,
+          contentType,
+          submitApiOptions,
+        );
         setImageId(meta.imageId);
       }
 
-      Alert.alert("완료", "새록이 성공적으로 수정되었습니다.");
       resetForm();
       router.replace("/(tabs)/saerok");
     } catch (e: any) {
-      Alert.alert("오류", e?.message ?? "새록 작성에 실패했습니다.");
+    } finally {
+      submitLockRef.current = false;
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
     if (!idNum) return;
-    Alert.alert("삭제", "정말 삭제할까요?", [
-      { text: "취소", style: "cancel" },
-      {
-        text: "삭제",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await deleteCollectionApi(idNum);
-            resetForm();
-            router.replace("/(tabs)/saerok");
-          } catch (e: any) {
-            Alert.alert("오류", e?.message ?? "삭제에 실패했어요");
-          }
-        },
-      },
-    ]);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!idNum) return;
+
+    setShowDeleteConfirm(false);
+
+    try {
+      await deleteCollectionApi(idNum);
+      resetForm();
+      router.replace("/(tabs)/saerok");
+    } catch (e: any) {
+      openAlertModal({
+        mainText: "오류",
+        subText: e?.message ?? "삭제에 실패했어요.",
+      });
+    }
   };
 
   if (loadingEdit) {
@@ -344,7 +410,7 @@ export default function SaerokWriteScreen() {
         <View
           style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
         >
-          <ActivityIndicator />
+          <ActivityIndicator color="#4190FF" />
         </View>
       </SafeAreaView>
     );
@@ -355,21 +421,20 @@ export default function SaerokWriteScreen() {
       <View style={{ flex: 1 }}>
         {isEdit ? (
           <View style={styles.headerEdit}>
-            <Pressable
+            <TouchableOpacity
               onPress={() => router.back()}
               style={styles.headerTextBtn}
               accessibilityRole="button"
             >
               <Text style={styles.headerText}>취소</Text>
-            </Pressable>
-            <Text style={styles.headerTitle}>새록 편집하기</Text>
-            <Pressable
+            </TouchableOpacity>
+            <TouchableOpacity
               onPress={handleDelete}
               style={styles.headerTextBtn}
               accessibilityRole="button"
             >
-              <Text style={styles.headerText}>삭제</Text>
-            </Pressable>
+              <Text style={[styles.headerText, styles.headerDeleteText]}>삭제</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <View style={styles.header}>
@@ -393,46 +458,48 @@ export default function SaerokWriteScreen() {
             contentContainerStyle={{
               paddingHorizontal: rs(24),
               paddingTop: rs(20),
-              paddingBottom: rs(160),
+              paddingBottom: rs(30),
             }}
             keyboardShouldPersistTaps="handled"
           >
             <View style={styles.imageRow}>
-              <View style={styles.imageBox}>
-                <Pressable
+              <View style={[styles.imageBox, previewUri && styles.imageBoxFilled]}>
+                {previewUri ? (
+                  <RNImage
+                    source={{ uri: form.imageFile?.uri ?? previewUri }}
+                    style={styles.imageThumb}
+                    resizeMode="cover"
+                    onError={() => setImagePreviewError(true)}
+                  />
+                ) : null}
+                <TouchableOpacity
                   onPress={pickImage}
                   style={[
                     styles.imagePress,
-                    !form.imagePreviewUrl && styles.imageAdd,
+                    !previewUri && styles.imageAdd,
+                    previewUri && styles.imageOverlayPress,
                   ]}
                   accessibilityRole="button"
                 >
-                  {form.imagePreviewUrl ? (
-                    <RNImage
-                      source={{ uri: form.imagePreviewUrl }}
-                      style={styles.imageThumb}
-                      resizeMode="cover"
-                      onError={() => setImagePreviewError(true)}
-                    />
-                  ) : (
+                  {!previewUri ? (
                     <AddImageIcon width={rs(14)} height={rs(14)} />
-                  )}
-                </Pressable>
+                  ) : null}
+                </TouchableOpacity>
               </View>
               <Text style={styles.imageCount}>
-                {form.imagePreviewUrl ? "(1/1)" : "(0/1)"}
+                {previewUri ? "(1/1)" : "(0/1)"}
               </Text>
             </View>
             <View style={styles.sectionLg}>
               <Text style={styles.sectionLabel}>새 이름</Text>
-              <Pressable
+              <TouchableOpacity
                 style={[
                   styles.searchBar,
                   !!form.birdName && styles.searchBarFilled,
                   unknownBird && styles.searchBarDisabled,
                 ]}
+                disabled={unknownBird}
                 onPress={() => {
-                  if (unknownBird) return;
                   router.push("/saerok/search-bird");
                 }}
               >
@@ -442,10 +509,14 @@ export default function SaerokWriteScreen() {
                     !form.birdName && styles.searchPlaceholder,
                   ]}
                 >
-                  {form.birdName ? form.birdName : "새 이름을 입력해주세요"}
+                  {form.birdName
+                    ? form.birdName
+                    : unknownBird
+                    ? "이름 모를 새"
+                    : "새 이름을 입력해주세요"}
                 </Text>
-              </Pressable>
-              <Pressable
+              </TouchableOpacity>
+              <TouchableOpacity
                 style={styles.unknownRow}
                 onPress={handleToggleUnknownBird}
               >
@@ -458,12 +529,12 @@ export default function SaerokWriteScreen() {
                   <CheckIcon width={rs(12)} height={rs(12)} color="#FFFFFF" />
                 </View>
                 <Text style={styles.unknownText}>모르겠어요</Text>
-              </Pressable>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.sectionSm}>
               <Text style={styles.sectionLabel}>발견 일시</Text>
-              <Pressable
+              <TouchableOpacity
                 style={[
                   styles.searchBar,
                   !!form.date && styles.searchBarFilled,
@@ -478,12 +549,12 @@ export default function SaerokWriteScreen() {
                 >
                   {form.date ? form.date : "날짜를 선택해주세요"}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             </View>
 
             <View style={styles.sectionMd}>
               <Text style={styles.sectionLabel}>발견 장소</Text>
-              <Pressable
+              <TouchableOpacity
                 style={[
                   styles.searchBar,
                   !!form.address && styles.searchBarFilled,
@@ -496,9 +567,9 @@ export default function SaerokWriteScreen() {
                     !form.address && styles.searchPlaceholder,
                   ]}
                 >
-                  {form.address ? form.address : "발견 장소를 선택해주세요"}
+                  {form.address ? form.address : "장소를 선택해주세요"}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
               {form.locationAlias ? (
                 <View style={styles.placeRow}>
                   <MapIcon
@@ -513,7 +584,7 @@ export default function SaerokWriteScreen() {
             </View>
             <View style={styles.memoWrap}>
               <Text style={styles.memoLabel}>한 줄 평</Text>
-              <View
+              <TouchableOpacity
                 style={[
                   styles.memoBox,
                   {
@@ -523,8 +594,10 @@ export default function SaerokWriteScreen() {
                         : "#E5E7EB",
                   },
                 ]}
+                onPress={() => memoInputRef.current?.focus()}
               >
                 <TextInput
+                  ref={memoInputRef}
                   value={form.memo}
                   onChangeText={(text) => {
                     if (text.length <= 50) setMemo(text);
@@ -541,11 +614,11 @@ export default function SaerokWriteScreen() {
                   }}
                   onBlur={() => setFocusedField(null)}
                 />
-              </View>
+              </TouchableOpacity>
               <Text style={styles.memoCount}>{`(${form.memo.length}/50)`}</Text>
             </View>
 
-            <Pressable
+            <TouchableOpacity
               onPress={() =>
                 setAccessLevel(
                   form.accessLevel === "PUBLIC" ? "PRIVATE" : "PUBLIC",
@@ -562,9 +635,42 @@ export default function SaerokWriteScreen() {
                 <CheckIcon width={rs(16)} height={rs(16)} color="#FFFFFF" />
               </View>
               <Text style={styles.accessText}>새록 비공개하기</Text>
-            </Pressable>
+            </TouchableOpacity>
+
+            <View style={styles.bottomBar}>
+              <TouchableOpacity
+                onPress={handleSubmit}
+                style={[
+                  styles.submit,
+                  { width: "100%", backgroundColor: canSubmit ? "#91bfff" : "#DAE0DE" },
+                ]}
+                disabled={!canSubmit}
+              >
+                <Text style={[styles.submitText, { color: canSubmit ? "#fff" : "#FEFEFE" }]}> 
+                  {isEdit ? "수정하기" : "등록하기"}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </ScrollView>
         </KeyboardAvoidingView>
+        <AppAlertModal
+          visible={alertModal.visible}
+          mainText={alertModal.mainText}
+          subText={alertModal.subText}
+          onClose={closeAlertModal}
+          onConfirm={alertModal.onConfirm}
+        />
+
+        <AppConfirmModal
+          visible={showDeleteConfirm}
+          mainText="삭제하시겠어요?"
+          subText={`‘${deleteBirdName}’ 새록이 삭제돼요.`}
+          leftText="삭제하기"
+          rightText="취소하기"
+          leftDanger
+          onClose={() => setShowDeleteConfirm(false)}
+          onLeft={confirmDelete}
+        />
 
         <Modal
           transparent
@@ -685,7 +791,7 @@ export default function SaerokWriteScreen() {
                               styles.monthPickerCellTextActive,
                           ]}
                         >
-                          {i + 1}월
+                          {i + 1}??
                         </Text>
                       </Pressable>
                     ))}
@@ -757,18 +863,6 @@ export default function SaerokWriteScreen() {
             </Pressable>
           </Pressable>
         </Modal>
-
-        <View style={[styles.bottomBar, { paddingBottom: insets.bottom }]}>
-          <Pressable
-            onPress={handleSubmit}
-            style={[styles.submit, { opacity: canSubmit ? 1 : 0.6 }]}
-            disabled={!canSubmit}
-          >
-            <Text style={styles.submitText}>
-              {isEdit ? "편집 완료" : "종 추가"}
-            </Text>
-          </Pressable>
-        </View>
       </View>
     </SafeAreaView>
   );
@@ -809,6 +903,10 @@ const styles = StyleSheet.create({
     fontSize: rfs(16),
     fontWeight: "400",
   },
+  headerDeleteText: {
+    color: "#D90000",
+    fontWeight: "500",
+  },
   headerClose: {
     width: rs(36),
     height: rs(36),
@@ -831,6 +929,10 @@ const styles = StyleSheet.create({
     height: rs(78),
     borderRadius: rs(10),
     position: "relative",
+    overflow: "hidden",
+  },
+  imageBoxFilled: {
+    backgroundColor: "#D9D9D9",
   },
   imageAdd: {
     width: rs(78),
@@ -846,6 +948,7 @@ const styles = StyleSheet.create({
   imagePress: {
     position: "absolute",
     left: 0,
+    top: 0,
     bottom: 0,
     width: rs(78),
     height: rs(78),
@@ -854,10 +957,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  imageOverlayPress: {
+    backgroundColor: "transparent",
+  },
   imageThumb: {
     width: rs(78),
     height: rs(78),
     borderRadius: rs(10),
+    overflow: "hidden",
   },
   imageCount: {
     color: "#979797",
@@ -1009,13 +1116,78 @@ const styles = StyleSheet.create({
     fontWeight: "400",
     lineHeight: rfs(18),
   },
-  bottomBar: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    bottom: 0,
+  alertBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.40)",
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: rs(24),
-    backgroundColor: "#transparent",
+  },
+  alertCard: {
+    width: "100%",
+    maxWidth: rs(327),
+    backgroundColor: "#FFFFFF",
+    borderRadius: rs(24),
+    alignItems: "center",
+    paddingTop: rs(28),
+    paddingBottom: rs(24),
+    paddingHorizontal: rs(20),
+  },
+  alertTextBlock: {
+    marginTop: rs(14),
+    alignItems: "center",
+  },
+  alertMainText: {
+    color: "#0D0D0D",
+    fontSize: rfs(18),
+    lineHeight: rfs(22),
+    fontFamily: font.medium,
+  },
+  alertSubText: {
+    marginTop: rs(7),
+    color: "#979797",
+    fontSize: rfs(14),
+    lineHeight: rfs(18),
+    fontFamily: font.regular,
+  },
+  alertBtnRow: {
+    width: "100%",
+    flexDirection: "row",
+    gap: rs(10),
+    marginTop: rs(24),
+  },
+  alertLeftBtn: {
+    flex: 1,
+    height: rs(52),
+    borderRadius: rs(16),
+    backgroundColor: "#91BFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  alertLeftBtnText: {
+    color: "#FFFFFF",
+    fontSize: rfs(16),
+    lineHeight: rfs(20),
+    fontFamily: font.medium,
+  },
+  alertRightBtn: {
+    flex: 1,
+    height: rs(52),
+    borderRadius: rs(16),
+    borderWidth: 1,
+    borderColor: "#FF5C5C",
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  alertRightBtnText: {
+    color: "#FF5C5C",
+    fontSize: rfs(16),
+    lineHeight: rfs(20),
+    fontFamily: font.medium,
+  },
+  bottomBar: {
+    marginTop: rs(25),
   },
   submit: {
     height: rs(53),

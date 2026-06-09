@@ -54,10 +54,43 @@ export default function SearchPlaceScreen() {
   }, []);
 
   useEffect(() => {
-    if (!myCoords) return;
-    if (!q.trim()) return;
-    void doSearch();
-  }, [myCoords]);
+    if (!q.trim()) {
+      setItems([]);
+      setSearched(false);
+      setLoading(false);
+      return;
+    }
+
+    let canceled = false;
+    const timer = setTimeout(async () => {
+      const term = q.trim();
+      if (!term) return;
+
+      setLoading(true);
+      try {
+        const docs = await searchKakaoPlaces(term, 1, 15, {
+          latitude: myCoords?.latitude,
+          longitude: myCoords?.longitude,
+        });
+        if (!canceled) {
+          setItems(docs);
+          setSearched(true);
+        }
+      } catch {
+        if (!canceled) {
+          setItems([]);
+          setSearched(true);
+        }
+      } finally {
+        if (!canceled) setLoading(false);
+      }
+    }, 300);
+
+    return () => {
+      canceled = true;
+      clearTimeout(timer);
+    };
+  }, [myCoords?.latitude, myCoords?.longitude, q]);
 
   const doSearch = async () => {
     const term = q.trim();
@@ -165,7 +198,7 @@ export default function SearchPlaceScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#F7F7F7" },
+  root: { flex: 1, backgroundColor: "#FFFFFF" },
   searchSection: {
     paddingHorizontal: rs(24),
     paddingTop: rs(10),

@@ -1,4 +1,5 @@
 import BracketIcon from "@/assets/icon/common/BracketIcon";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 import { getAnnouncementDetail } from "@/services/api/announcements";
 import { rfs, rs } from "@/theme";
 import { font } from "@/theme/typography";
@@ -90,15 +91,15 @@ export default function AnnouncementDetailPage() {
   );
 
   return (
-    <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
+    <SafeAreaView style={styles.root} edges={["top", "left", "right", "bottom"]}>
       <View style={styles.header}>
-        <Pressable
+        <TouchableOpacity
           onPress={() => router.back()}
           style={styles.backButton}
           hitSlop={8}
         >
           <BracketIcon width={rs(17)} height={rs(17)} color="#0D0D0D" />
-        </Pressable>
+        </TouchableOpacity>
       </View>
 
       {loading ? (
@@ -163,7 +164,6 @@ const styles = StyleSheet.create({
   contentContainer: {
     paddingHorizontal: rs(24),
     paddingTop: rs(14),
-    paddingBottom: rs(36),
   },
   title: {
     color: "#0D0D0D",

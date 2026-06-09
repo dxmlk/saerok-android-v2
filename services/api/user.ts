@@ -59,6 +59,19 @@ export interface CheckNicknameResponse {
   reason: string;
 }
 
+export type SignupSource =
+  | "INSTAGRAM"
+  | "OTHER_SNS"
+  | "FRIEND"
+  | "COMMUNITY"
+  | "ETC";
+
+export interface SignupCompleteResponse {
+  userId: number;
+  signupStatus: "COMPLETED";
+  success: boolean;
+}
+
 export const checkNicknameAvailable = async (payload: {
   nickname: string;
 }): Promise<CheckNicknameResponse> => {
@@ -72,6 +85,22 @@ export const checkNicknameAvailable = async (payload: {
     return res.data;
   } catch (e) {
     console.log("[checkNicknameAvailable] ERROR", e);
+    throw e;
+  }
+};
+
+export const signupComplete = async (payload: {
+  nickname: string;
+  signupSource: SignupSource;
+}): Promise<SignupCompleteResponse> => {
+  try {
+    const res = await axiosPrivate.post<SignupCompleteResponse>(
+      "/user/signup-complete",
+      payload,
+    );
+    return res.data;
+  } catch (e) {
+    console.log("[signupComplete] ERROR", e);
     throw e;
   }
 };
@@ -107,6 +136,15 @@ export const deleteProfileImage = async (): Promise<void> => {
     await axiosPrivate.delete("/user/me/profile-image");
   } catch (e) {
     console.log("[deleteProfileImage] ERROR", e);
+    throw e;
+  }
+};
+
+export const withdrawUser = async (): Promise<void> => {
+  try {
+    await axiosPrivate.delete("/user/me");
+  } catch (e) {
+    console.log("[withdrawUser] ERROR", e);
     throw e;
   }
 };

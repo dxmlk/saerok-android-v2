@@ -1,7 +1,8 @@
 import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { rfs, rs } from "../../theme";
+import { font, rfs, rs } from "../../theme";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 
 type Props = {
   text: string;
@@ -19,13 +20,12 @@ export default function EditFooter({ text, onClick, disabled = false }: Props) {
         { paddingBottom: Math.max(rs(20), insets.bottom + rs(16)) },
       ]}
     >
-      <Pressable
+      <TouchableOpacity
         onPress={disabled ? undefined : onClick}
         disabled={disabled}
-        style={({ pressed }) => [
+        style={[
           styles.btn,
           disabled ? styles.btnDisabled : styles.btnEnabled,
-          !disabled && pressed ? styles.btnPressed : null,
         ]}
       >
         <Text
@@ -36,7 +36,7 @@ export default function EditFooter({ text, onClick, disabled = false }: Props) {
         >
           {text}
         </Text>
-      </Pressable>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -66,14 +66,11 @@ const styles = StyleSheet.create({
   btnDisabled: {
     backgroundColor: "#DAE0DE", // 회색
   },
-  btnPressed: {
-    opacity: 0.8,
-  },
-
   text: {
     fontSize: rfs(18),
     fontWeight: "500",
     lineHeight: rfs(21),
+    fontFamily: font.medium,
   },
   textEnabled: { color: "#FEFEFE" },
   textDisabled: { color: "#FEFEFE" },

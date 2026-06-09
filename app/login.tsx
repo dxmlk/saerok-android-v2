@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  BackHandler,
   Modal,
   Pressable,
   Text,
@@ -8,11 +9,15 @@ import {
   StyleSheet,
   Animated,
 } from "react-native";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
+import { CommonActions, useNavigation } from "@react-navigation/native";
 import { login } from "@react-native-seoul/kakao-login";
 
 import { useAuth } from "@/hooks/useAuth";
 import { setAccessToken } from "@/lib/tokenStore";
+import { clearSaerokActionButtonVariant } from "@/lib/saerokActionButtonVariant";
 import { loginKakaoApi, refreshAccessTokenApi } from "@/services/api/auth";
+import { beginApiRequest } from "@/services/apiLoading";
 
 import SplashLogo from "@/assets/icon/logo/SplashLogo";
 import KakaoLogo from "@/assets/icon/logo/KakaoLogo";
@@ -22,8 +27,10 @@ import { rfs, rs } from "@/theme";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { refreshUser } = useAuth();
+  const navigation = useNavigation();
+  const { isLoggedIn, refreshUser } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [alertModal, setAlertModal] = useState<{
     visible: boolean;
     mainText: string;
@@ -40,6 +47,22 @@ export default function LoginScreen() {
 
   const anim = useRef(new Animated.Value(0)).current;
   const isAnyModalOpen = modalOpen || alertModal.visible;
+
+  useEffect(() => {
+    const state = navigation.getState?.();
+    if (!state || state.routes.length <= 1) return;
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: "login" }],
+      }),
+    );
+  }, [navigation]);
+
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => true);
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     if (!isAnyModalOpen) {
@@ -71,7 +94,37 @@ export default function LoginScreen() {
   const closeAlertModal = () =>
     setAlertModal((prev) => ({ ...prev, visible: false, onRight: null }));
 
+  const enterService = useCallback(() => {
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [
+          {
+            name: "(tabs)",
+            state: {
+              index: 2,
+              routes: [
+                { name: "saerok" },
+                { name: "dex" },
+                { name: "nest" },
+                { name: "map" },
+                { name: "my" },
+              ],
+            },
+          },
+        ],
+      } as any),
+    );
+  }, [navigation]);
+
+  useEffect(() => {
+    if (isLoggedIn) enterService();
+  }, [enterService, isLoggedIn]);
+
   const onKakaoLogin = async () => {
+    if (submitting) return;
+    const endLoading = beginApiRequest();
+    setSubmitting(true);
     try {
       const kakaoToken = await login();
       const kakaoAccessToken = kakaoToken.accessToken;
@@ -87,6 +140,7 @@ export default function LoginScreen() {
       const res = await loginKakaoApi(kakaoAccessToken);
       console.log("[loginKakaoApi] res =", res);
 
+      await clearSaerokActionButtonVariant();
       await setAccessToken(res.accessToken);
       try {
         const rr = await refreshAccessTokenApi();
@@ -101,13 +155,16 @@ export default function LoginScreen() {
         return;
       }
 
-      router.replace("/(tabs)/nest");
+      enterService();
     } catch (e: any) {
       console.log("[Login] Kakao login error:", e);
       openAlertModal({
         mainText: "카카오 로그인에 실패했어요.",
         subText: e?.message ?? "알 수 없는 오류가 발생했어요.",
       });
+    } finally {
+      setSubmitting(false);
+      endLoading();
     }
   };
 
@@ -124,16 +181,24 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.bottom}>
-        <Pressable onPress={onKakaoLogin} style={styles.kakaoBtn}>
+        <TouchableOpacity
+          onPress={onKakaoLogin}
+          style={styles.kakaoBtn}
+          disabled={submitting}
+        >
           <View style={styles.kakaoRow}>
             <KakaoLogo width={rs(18)} height={rs(18)} />
             <Text style={styles.kakaoText}>카카오로 계속하기</Text>
           </View>
-        </Pressable>
+        </TouchableOpacity>
 
-        <Pressable onPress={() => setModalOpen(true)} style={styles.guestBtn}>
+        <TouchableOpacity
+          onPress={() => setModalOpen(true)}
+          style={styles.guestBtn}
+          disabled={submitting}
+        >
           <Text style={styles.guestText}>로그인 없이 이용하기</Text>
-        </Pressable>
+        </TouchableOpacity>
       </View>
 
       <Modal
@@ -165,7 +230,7 @@ export default function LoginScreen() {
                   style={styles.rightBtn}
                   onPress={() => {
                     closeModal();
-                    router.replace("/(tabs)/map");
+                    enterService();
                   }}
                 >
                   <Text style={styles.rightBtnText}>계속하기</Text>

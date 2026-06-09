@@ -1,5 +1,7 @@
 import BracketIcon from "@/assets/icon/common/BracketIcon";
 import EmptyState from "@/components/common/EmptyState";
+import AnimatedModalContent from "@/components/common/AnimatedModalContent";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 import ProfileAvatar from "@/components/my/ProfileAvatar";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -12,6 +14,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   Image,
   Modal,
   Pressable,
@@ -20,7 +23,10 @@ import {
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 type RatioMap = Record<number, number>;
 
@@ -38,6 +44,7 @@ function getJoinedDays(joinedDate?: string | null) {
 
 export default function UserProfilePage() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { userId } = useLocalSearchParams<{ userId: string }>();
   const idNum = Number(userId);
   const { isLoggedIn } = useAuth();
@@ -86,8 +93,11 @@ export default function UserProfilePage() {
     if (!data?.collections?.length) return;
     let cancelled = false;
     const targets = data.collections
-      .filter((it) => !!it.imageUrl && !ratioRef.current[it.collectionId])
-      .map((it) => ({ id: it.collectionId, uri: it.imageUrl! }));
+      .map((it) => ({
+        id: it.collectionId,
+        uri: it.thumbnailImageUrl || it.imageUrl || "",
+      }))
+      .filter((it) => !!it.uri && !ratioRef.current[it.id]);
     if (!targets.length) return;
 
     targets.forEach(({ id, uri }) => {
@@ -122,14 +132,36 @@ export default function UserProfilePage() {
     ];
   }, [data]);
 
-  const leftEntries = useMemo(
-    () => entries.filter((_, i) => i % 2 === 0),
-    [entries],
-  );
-  const rightEntries = useMemo(
-    () => entries.filter((_, i) => i % 2 === 1),
-    [entries],
-  );
+  const { leftEntries, rightEntries } = useMemo(() => {
+    const width = Dimensions.get("window").width;
+    const columnWidth = Math.max(1, (width - rs(18) - rs(7)) / 2);
+    const countCardHeight = rs(82);
+    const cardVerticalChrome = rs(5) + rs(8) + rs(10) + rfs(14);
+
+    const left: GridEntry[] = [];
+    const right: GridEntry[] = [];
+    let leftHeight = 0;
+    let rightHeight = 0;
+
+    const estimateHeight = (entry: GridEntry) => {
+      if (entry.type === "count") return countCardHeight;
+      const ratio = ratioRef.current[entry.item.collectionId] ?? 1;
+      return columnWidth / Math.max(ratio, 0.1) + cardVerticalChrome;
+    };
+
+    entries.forEach((entry) => {
+      const height = estimateHeight(entry);
+      if (leftHeight <= rightHeight) {
+        left.push(entry);
+        leftHeight += height + rs(9);
+      } else {
+        right.push(entry);
+        rightHeight += height + rs(9);
+      }
+    });
+
+    return { leftEntries: left, rightEntries: right };
+  }, [entries]);
 
   const renderEntry = (entry: GridEntry, key: string) => {
     if (entry.type === "count") {
@@ -145,18 +177,18 @@ export default function UserProfilePage() {
 
     const item = entry.item;
     return (
-      <Pressable
+      <TouchableOpacity
         key={key}
         style={styles.card}
-        onPress={() =>
-          router.push({
-            pathname: "/saerok/[collectionId]",
-            params: { collectionId: String(item.collectionId) },
-          })
-        }
+        onPress={() => {
+          const { openSaerokDetail } = require("@/lib/navigation");
+          openSaerokDetail(router, item.collectionId, {
+            from: "saerok_profile_grid",
+          });
+        }}
       >
         <Image
-          source={{ uri: item.imageUrl ?? item.thumbnailImageUrl ?? "" }}
+          source={{ uri: item.thumbnailImageUrl ?? item.imageUrl ?? "" }}
           resizeMode="cover"
           style={[
             styles.imgBase,
@@ -168,7 +200,7 @@ export default function UserProfilePage() {
         <Text numberOfLines={1} style={styles.caption}>
           {item.birdKoreanName ?? "\uc774\ub984 \ubaa8\ub97c \uc0c8"}
         </Text>
-      </Pressable>
+      </TouchableOpacity>
     );
   };
 
@@ -178,14 +210,22 @@ export default function UserProfilePage() {
   };
 
   return (
-    <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
-      <Pressable style={styles.floatingBack} onPress={() => router.back()}>
-        <BracketIcon width={rs(17)} height={rs(17)} color="#0D0D0D" />
-      </Pressable>
+    <SafeAreaView
+      style={styles.root}
+      edges={["top", "left", "right", "bottom"]}
+    >
+      <View style={{ top: insets.top }}>
+        <TouchableOpacity
+          style={styles.floatingBack}
+          onPress={() => router.back()}
+        >
+          <BracketIcon width={rs(17)} height={rs(17)} color="#0D0D0D" />
+        </TouchableOpacity>
+      </View>
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator />
+          <ActivityIndicator color="#4190FF" />
         </View>
       ) : error || !data ? (
         <View style={styles.center}>
@@ -197,6 +237,7 @@ export default function UserProfilePage() {
         </View>
       ) : (
         <ScrollView
+          style={{ marginBottom: insets.bottom }}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
@@ -253,7 +294,8 @@ export default function UserProfilePage() {
         onRequestClose={handleCloseUserMissingModal}
       >
         <View style={styles.userMissingBackdrop}>
-          <View style={styles.userMissingCard}>
+          <AnimatedModalContent visible={userMissingModalOpen}>
+            <View style={styles.userMissingCard}>
             <View style={styles.userMissingIconCircle}>
               <Text style={styles.userMissingIconText}>{"!"}</Text>
             </View>
@@ -267,7 +309,9 @@ export default function UserProfilePage() {
             </Pressable>
 
             <Text style={styles.userMissingTitle}>
-              {"\uc0ac\uc6a9\uc790\ub97c \ucc3e\uc744 \uc218 \uc5c6\uc5b4\uc694."}
+              {
+                "\uc0ac\uc6a9\uc790\ub97c \ucc3e\uc744 \uc218 \uc5c6\uc5b4\uc694."
+              }
             </Text>
             <Text style={styles.userMissingSub}>
               {"\ud0c8\ud1f4\ud55c \uc0ac\uc6a9\uc790"}
@@ -281,7 +325,8 @@ export default function UserProfilePage() {
                 {"\ud655\uc778"}
               </Text>
             </Pressable>
-          </View>
+            </View>
+          </AnimatedModalContent>
         </View>
       </Modal>
     </SafeAreaView>
@@ -306,7 +351,6 @@ const styles = StyleSheet.create({
   },
   floatingBack: {
     position: "absolute",
-    top: rs(24),
     left: rs(24),
     zIndex: 20,
     width: rs(40),
@@ -320,7 +364,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: rs(92),
-    paddingBottom: rs(100),
+    paddingBottom: rs(20),
   },
   headerBlock: {
     paddingHorizontal: rs(24),

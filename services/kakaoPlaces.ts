@@ -1,3 +1,5 @@
+import { trackApiRequest } from "@/services/apiLoading";
+
 export type KakaoPlaceDoc = {
   id: string;
   place_name: string;
@@ -44,13 +46,17 @@ export async function searchKakaoPlaces(
 
   const url = `https://dapi.kakao.com/v2/local/search/keyword.json?${params.toString()}`;
 
-  const res = await fetch(url, {
-    method: "GET",
-    headers: {
-      // ✅ 로컬 REST API는 이것만으로 충분하게 가는 게 제일 안전합니다.
-      Authorization: `KakaoAK ${REST_KEY}`,
-    },
-  });
+  const res = await trackApiRequest(
+    () =>
+      fetch(url, {
+        method: "GET",
+        headers: {
+          // ✅ 로컬 REST API는 이것만으로 충분하게 가는 게 제일 안전합니다.
+          Authorization: `KakaoAK ${REST_KEY}`,
+        },
+      }),
+    { showOverlay: false },
+  );
 
   const text = await res.text();
   if (!res.ok) {

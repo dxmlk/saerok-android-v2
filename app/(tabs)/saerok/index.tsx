@@ -1,5 +1,6 @@
 import SaerokList from "@/components/saerok/SaerokList";
 import SaerokMain from "@/components/saerok/SaerokMain";
+import { useAuth } from "@/hooks/useAuth";
 import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { Animated, RefreshControl, StyleSheet, View } from "react-native";
@@ -8,6 +9,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function SaerokScreen() {
+  const { isLoggedIn } = useAuth();
   const insets = useSafeAreaInsets();
   const [opacity] = useState(new Animated.Value(1));
   const [refreshing, setRefreshing] = useState(false);
@@ -32,9 +34,16 @@ export default function SaerokScreen() {
   );
 
   return (
-    <SafeAreaView style={styles.root} edges={["left", "right"]}>
+    <SafeAreaView
+      style={[styles.root, !isLoggedIn && styles.rootWhite]}
+      edges={["left", "right"]}
+    >
       <LinearGradient
-        colors={["#F7F7F7", "#F7F7F7", "rgba(247, 247, 247, 0)"]}
+        colors={
+          isLoggedIn
+            ? ["#F7F7F7", "#F7F7F7", "rgba(247, 247, 247, 0)"]
+            : ["#FFFFFF", "#FFFFFF", "#FFFFFF"]
+        }
         locations={[0, 0.9461, 1]}
         start={{ x: 0, y: 1 }}
         end={{ x: 0, y: 0 }}
@@ -67,6 +76,7 @@ export default function SaerokScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#F7F7F7" },
+  rootWhite: { backgroundColor: "#FFFFFF" },
   rootInner: { flex: 1 },
   content: { paddingTop: rs(0), paddingBottom: rs(120) },
   listWrap: { paddingHorizontal: rs(0) },

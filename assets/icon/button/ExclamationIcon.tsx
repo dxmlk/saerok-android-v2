@@ -1,17 +1,26 @@
 import * as React from "react";
-import Svg, { Path } from "react-native-svg";
+import Svg, { Circle, Path } from "react-native-svg";
 
 type Props = { width?: number; height?: number; color?: string };
 
 export default function ExclamationIcon({
-  width = 3,
-  height = 11,
-  color = "#2563EB",
+  width = 30,
+  height = 30,
+  color = "#91BFFF",
 }: Props) {
   return (
-    <Svg width={width} height={height} viewBox="0 0 3 11" fill="none">
+    <Svg width={width} height={height} viewBox="0 0 30 30" fill="none">
+      <Circle cx="15" cy="15" r="13" stroke={color} strokeWidth="2" />
       <Path
-        d="M2.45801 0.101562L2.3623 7.21094H1.21387L1.11816 0.101562H2.45801ZM1.78809 10.082C1.30957 10.082 0.899414 9.68555 0.913086 9.19336C0.899414 8.71484 1.30957 8.31836 1.78809 8.31836C2.2666 8.31836 2.66309 8.71484 2.66309 9.19336C2.66309 9.68555 2.2666 10.082 1.78809 10.082Z"
+        d="M15 7.36523L15 17.4912"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <Circle
+        cx="15"
+        cy="21.8711"
+        r="1.5"
         fill={color}
       />
     </Svg>

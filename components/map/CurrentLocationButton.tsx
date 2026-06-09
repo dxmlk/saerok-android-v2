@@ -1,5 +1,6 @@
 import React from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
+import { StyleSheet, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { rs } from "@/theme";
@@ -12,23 +13,25 @@ type Props = {
 export default function CurrentLocationButton({ onPress, bottom = rs(120) }: Props) {
   return (
     <View style={[styles.wrap, { bottom }]}>
-      <Pressable onPress={onPress} style={styles.btn}>
-        <Svg width={rs(24)} height={rs(24)} viewBox="0 0 24 24" fill="none">
-          <Circle cx="12" cy="12" r="10.5" stroke="#0D0D0D" strokeWidth={2} />
-          <Circle
-            cx="12.1436"
-            cy="12.0001"
-            r="1"
-            fill="#0D0D0D"
-            stroke="#0D0D0D"
-            strokeWidth={1.84585}
-          />
-          <Path d="M22.2745 12L18.1582 12" stroke="#0D0D0D" strokeWidth={2} strokeLinecap="round" />
-          <Path d="M6.13189 12L2.01562 12" stroke="#0D0D0D" strokeWidth={2} strokeLinecap="round" />
-          <Path d="M12.1445 1.87104L12.1445 5.9873" stroke="#0D0D0D" strokeWidth={2} strokeLinecap="round" />
-          <Path d="M12.1445 18.0126L12.1445 22.1289" stroke="#0D0D0D" strokeWidth={2} strokeLinecap="round" />
-        </Svg>
-      </Pressable>
+      <TouchableOpacity onPress={onPress} style={styles.pressArea}>
+        <View style={styles.btn}>
+          <Svg width={rs(24)} height={rs(24)} viewBox="0 0 24 24" fill="none">
+            <Circle cx="12" cy="12" r="10.5" stroke="#0D0D0D" strokeWidth={2} />
+            <Circle
+              cx="12.1436"
+              cy="12.0001"
+              r="1"
+              fill="#0D0D0D"
+              stroke="#0D0D0D"
+              strokeWidth={1.84585}
+            />
+            <Path d="M22.2745 12L18.1582 12" stroke="#0D0D0D" strokeWidth={2} strokeLinecap="round" />
+            <Path d="M6.13189 12L2.01562 12" stroke="#0D0D0D" strokeWidth={2} strokeLinecap="round" />
+            <Path d="M12.1445 1.87104L12.1445 5.9873" stroke="#0D0D0D" strokeWidth={2} strokeLinecap="round" />
+            <Path d="M12.1445 18.0126L12.1445 22.1289" stroke="#0D0D0D" strokeWidth={2} strokeLinecap="round" />
+          </Svg>
+        </View>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -37,6 +40,12 @@ const styles = StyleSheet.create({
   wrap: {
     position: "absolute",
     left: rs(24),
+  },
+  pressArea: {
+    width: rs(64),
+    height: rs(64),
+    alignItems: "center",
+    justifyContent: "center",
   },
   btn: {
     width: rs(42),

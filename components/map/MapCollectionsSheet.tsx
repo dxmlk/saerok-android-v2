@@ -4,7 +4,6 @@ import {
   Dimensions,
   Image,
   PanResponder,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,6 +11,7 @@ import {
 } from "react-native";
 
 import EmptyState from "@/components/common/EmptyState";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 import UnknownBirdSmallIcon from "@/assets/icon/nest/UnknownBirdSmallIcon";
 import CommentIcon from "@/assets/icon/saerok/CommentIcon";
 import HeartIcon from "@/assets/icon/saerok/HeartIcon";
@@ -57,13 +57,13 @@ function MapCollectionCard({
   const profile =
     item.user?.thumbnailProfileImageUrl || item.user?.profileImageUrl || "";
   const dateText = formatElapsed(item.createdAt);
-  const birdName = item.koreanName || "이름모를 새";
+  const birdName = item.koreanName || "이름 모를 새";
   const locationText = item.locationAlias || item.address || "";
   const imageUri = item.thumbnailImageUrl || item.imageUrl || "";
   const isUnknownBird = !item.koreanName;
 
   return (
-    <Pressable
+    <TouchableOpacity
       style={styles.card}
       onPress={() => onPressItem(item.collectionId)}
     >
@@ -136,7 +136,7 @@ function MapCollectionCard({
           </View>
         </View>
       </View>
-    </Pressable>
+    </TouchableOpacity>
   );
 }
 
@@ -213,7 +213,9 @@ export default function MapCollectionsSheet({
       </View>
 
       {items.length === 0 ? (
-        <View style={[styles.emptyWrap, { paddingBottom: rs(20) + bottomInset }]}>
+        <View
+          style={[styles.emptyWrap, { paddingBottom: rs(20) + bottomInset }]}
+        >
           <EmptyState
             bgColor="gray"
             upperText="지금은 고요한 숲처럼 조용하네요."

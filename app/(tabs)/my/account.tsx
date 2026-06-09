@@ -3,6 +3,7 @@ import LogoutAccountIcon from "@/assets/icon/icon/LogoutAccountIcon";
 import WithdrawAccountIcon from "@/assets/icon/icon/WithdrawAccountIcon";
 import NoticeIcon from "@/assets/icon/notice/NoticeIcon";
 import SimpleHeader from "@/components/common/SimpleHeader";
+import TouchableOpacity from "@/components/common/TouchableOpacity";
 import { useAuth } from "@/hooks/useAuth";
 import { rfs, rs } from "@/theme";
 import { font } from "@/theme/typography";
@@ -50,7 +51,7 @@ const initialModal: ConfirmModalState = {
 };
 
 export default function AccountPage() {
-  const { user, logout } = useAuth();
+  const { user, logout, withdraw } = useAuth();
   const [confirmModal, setConfirmModal] =
     useState<ConfirmModalState>(initialModal);
   const anim = useRef(new Animated.Value(0)).current;
@@ -95,7 +96,9 @@ export default function AccountPage() {
       leftText: "탈퇴하기",
       rightText: "돌아가기",
       leftVariant: "redOutline",
-      onLeft: () => {},
+      onLeft: () => {
+        void withdraw();
+      },
       onRight: null,
     });
   };
@@ -129,19 +132,19 @@ export default function AccountPage() {
         </View>
 
         <View style={styles.buttonGroup}>
-          <Pressable style={styles.actionBtn} onPress={openLogoutModal}>
+          <TouchableOpacity style={styles.actionBtn} onPress={openLogoutModal}>
             <View style={styles.actionInner}>
               <LogoutAccountIcon width={rs(24)} height={rs(24)} />
               <Text style={styles.actionText}>{"로그아웃"}</Text>
             </View>
-          </Pressable>
+          </TouchableOpacity>
 
-          <Pressable style={styles.actionBtn} onPress={openWithdrawModal}>
+          <TouchableOpacity style={styles.actionBtn} onPress={openWithdrawModal}>
             <View style={styles.actionInner}>
               <WithdrawAccountIcon width={rs(24)} height={rs(24)} />
               <Text style={styles.actionText}>{"회원 탈퇴"}</Text>
             </View>
-          </Pressable>
+          </TouchableOpacity>
         </View>
       </View>
 

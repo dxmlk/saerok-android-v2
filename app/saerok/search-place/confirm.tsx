@@ -156,7 +156,7 @@ export default function SearchPlaceConfirmScreen() {
 
         {resolving ? (
           <View style={styles.mapLoadingChip}>
-            <ActivityIndicator size="small" color="#91BFFF" />
+            <ActivityIndicator size="small" color="#4190FF" />
             <Text style={styles.mapLoadingText}>
               {"\uc8fc\uc18c \ud655\uc778 \uc911..."}
             </Text>
@@ -232,7 +232,7 @@ export default function SearchPlaceConfirmScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#F7F7F7" },
+  root: { flex: 1, backgroundColor: "#FFFFFF" },
   searchSection: {
     paddingHorizontal: rs(24),
     paddingTop: rs(10),
