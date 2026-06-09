@@ -144,11 +144,14 @@ function FreeBoardCard({
 
 function FreeBoardEntryCard({ onPress }: { onPress: () => void }) {
   return (
-    <TouchableOpacity style={styles.freeBoardEntryCard} onPress={onPress}>
-      <Text style={styles.freeBoardEntryText}>
-        자유게시판에 글을 남겨보세요!
-      </Text>
-      <View style={styles.freeBoardEntryArrowBox}>
+      <TouchableOpacity style={styles.freeBoardEntryCard} onPress={onPress}>
+        <Text
+          style={styles.freeBoardEntryText}
+          numberOfLines={1}
+        >
+          자유게시판에 글을 남겨보세요!
+        </Text>
+        <View style={styles.freeBoardEntryArrowBox}>
         <FreeBoardEntryArrowIcon width={rs(24)} height={rs(24)} />
       </View>
     </TouchableOpacity>
@@ -315,15 +318,21 @@ function CollectionRowSkeleton() {
         <View style={[styles.skeletonBlock, styles.collectionSkeletonTitle]} />
         <View style={[styles.skeletonBlock, styles.collectionSkeletonMeta]} />
         <View style={styles.collectionSkeletonUserRow}>
-          <View style={[styles.skeletonBlock, styles.collectionSkeletonAvatar]} />
+          <View
+            style={[styles.skeletonBlock, styles.collectionSkeletonAvatar]}
+          />
           <View style={[styles.skeletonBlock, styles.collectionSkeletonUser]} />
         </View>
       </View>
       <View style={styles.collectionSkeletonRight}>
         <View style={[styles.skeletonBlock, styles.collectionSkeletonThumb]} />
         <View style={styles.collectionSkeletonCountRow}>
-          <View style={[styles.skeletonBlock, styles.collectionSkeletonCount]} />
-          <View style={[styles.skeletonBlock, styles.collectionSkeletonCount]} />
+          <View
+            style={[styles.skeletonBlock, styles.collectionSkeletonCount]}
+          />
+          <View
+            style={[styles.skeletonBlock, styles.collectionSkeletonCount]}
+          />
         </View>
       </View>
     </View>
@@ -715,9 +724,7 @@ export default function NestHome() {
             >
               {loading
                 ? [0, 1, 2, 3].map((item) => (
-                    <PendingBirdSkeletonCard
-                      key={`pending-skeleton-${item}`}
-                    />
+                    <PendingBirdSkeletonCard key={`pending-skeleton-${item}`} />
                   ))
                 : pendingTop.map((item) => (
                     <PendingBirdCard
@@ -934,17 +941,17 @@ const styles = StyleSheet.create({
     backgroundColor: "#fefefe",
     paddingTop: rs(22),
     paddingBottom: rs(21),
-    paddingLeft: rs(46),
-    paddingRight: rs(49),
+    paddingLeft: rs(20),
+    paddingRight: rs(20),
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     borderWidth: rs(1),
     borderColor: "#F2F2F2",
+    gap: rs(17),
   },
   freeBoardEntryText: {
-    flex: 1,
-    color: "#0D0D0D",
+    color: "#979797",
     fontSize: rfs(12),
     lineHeight: rfs(16),
     fontWeight: "400",

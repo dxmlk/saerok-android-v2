@@ -18,6 +18,20 @@ import TouchableOpacity from "@/components/common/TouchableOpacity";
 
 type RatioMap = Record<number, number>;
 
+function toTime(value?: string | null) {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function sortCollectionsNewestFirst(items: CollectionItem[]) {
+  return [...items].sort((a, b) => {
+    const byCreatedAt = toTime(b.createdAt) - toTime(a.createdAt);
+    if (byCreatedAt !== 0) return byCreatedAt;
+    return b.collectionId - a.collectionId;
+  });
+}
+
 function SaerokSkeletonCard({ tall = false }: { tall?: boolean }) {
   return (
     <View style={styles.card}>
@@ -58,7 +72,7 @@ export default function SaerokList({
       setLoading(true);
       try {
         const res = await fetchMyCollections();
-        setItems(res);
+        setItems(sortCollectionsNewestFirst(res));
       } catch {
         setItems([]);
       } finally {

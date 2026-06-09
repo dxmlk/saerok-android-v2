@@ -1,13 +1,5 @@
 import * as React from "react";
-import Svg, {
-  Circle,
-  Defs,
-  FeGaussianBlur,
-  Filter,
-  G,
-  LinearGradient,
-  Stop,
-} from "react-native-svg";
+import Svg, { Circle, Defs, LinearGradient, Stop } from "react-native-svg";
 
 type Props = {
   width?: number;
@@ -17,27 +9,15 @@ type Props = {
 export default function SaerokCirclesBg({ width = 543, height = 500 }: Props) {
   return (
     <Svg width={width} height={height} viewBox="0 0 543 500" fill="none">
-      <G filter="url(#saerok-circles-blur)">
-        <Circle cx="216.4" cy="216.4" r="216.4" fill="#F9E2BE" />
-        <Circle cx="433.49" cy="355.278" r="108.695" fill="#91BFFF" />
-        <Circle
-          cx="463"
-          cy="235"
-          r="79"
-          fill="url(#paint0_linear_9099_39537)"
-        />
-      </G>
+      <Circle cx="216.4" cy="216.4" r="216.4" fill="#F9E2BE" />
+      <Circle cx="433.49" cy="355.278" r="108.695" fill="#91BFFF" />
+      <Circle
+        cx="463"
+        cy="235"
+        r="79"
+        fill="url(#paint0_linear_9099_39537)"
+      />
       <Defs>
-        <Filter
-          id="saerok-circles-blur"
-          x="-80"
-          y="-80"
-          width="703"
-          height="660"
-          filterUnits="userSpaceOnUse"
-        >
-          <FeGaussianBlur stdDeviation="100" />
-        </Filter>
         <LinearGradient
           id="paint0_linear_9099_39537"
           x1="719.585"

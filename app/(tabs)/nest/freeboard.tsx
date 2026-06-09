@@ -36,6 +36,7 @@ import SimpleHeader from "@/components/common/SimpleHeader";
 import TouchableOpacity from "@/components/common/TouchableOpacity";
 import AnimatedModalContent from "@/components/common/AnimatedModalContent";
 import ProfileAvatar from "@/components/my/ProfileAvatar";
+import SharedFreeBoardComposeSheet from "@/components/nest/FreeBoardComposeSheet";
 import NestWriteFab from "@/components/nest/NestWriteFab";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -177,7 +178,7 @@ function FreeBoardListRow({
 
   return (
     <TouchableOpacity style={styles.row} onPress={onPress}>
-        <View style={styles.rowHeader}>
+      <View style={styles.rowHeader}>
         <View style={styles.rowUser}>
           <Pressable
             style={styles.rowAvatarWrap}
@@ -402,6 +403,8 @@ function FreeBoardComposeSheet({
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [avatarFailed, setAvatarFailed] = useState(false);
   const wasOpenRef = useRef(false);
+  const composeInputBottomInset =
+    keyboardHeight + insets.bottom + rs(COMPOSE_BUTTON_GAP) + rs(53);
 
   useEffect(() => {
     if (!mounted) {
@@ -535,9 +538,13 @@ function FreeBoardComposeSheet({
               placeholder={LABEL_PLACEHOLDER}
               placeholderTextColor="#B0B0B0"
               multiline
+              scrollEnabled
               autoFocus
               textAlignVertical="top"
-              style={styles.composeInput}
+              style={[
+                styles.composeInput,
+                { marginBottom: composeInputBottomInset },
+              ]}
               returnKeyType="default"
             />
 
@@ -801,7 +808,7 @@ export default function NestFreeBoardScreen() {
 
       <NestWriteFab />
 
-      <FreeBoardComposeSheet
+      <SharedFreeBoardComposeSheet
         mounted={composeMounted}
         open={composeOpen}
         text={composeText}
@@ -812,6 +819,7 @@ export default function NestFreeBoardScreen() {
         nickname={user?.nickname?.trim() || LABEL_DEFAULT_USER}
         avatarUrl={user?.thumbnailImageUrl || user?.profileImageUrl || null}
         onClosed={handleComposeClosed}
+        submitLabel={editingPost ? LABEL_EDIT : LABEL_SUBMIT}
       />
 
       <FreeBoardOptionMenu
@@ -835,30 +843,32 @@ export default function NestFreeBoardScreen() {
         >
           <AnimatedModalContent visible={!!deleteConfirmPost}>
             <Pressable style={styles.alertCard} onPress={() => {}}>
-            <NoticeIcon width={rs(30)} height={rs(30)} color="#91BFFF" />
+              <NoticeIcon width={rs(30)} height={rs(30)} color="#91BFFF" />
 
-            <View style={styles.alertTextBlock}>
-              <Text style={styles.alertMainText}>게시물을 삭제하시겠어요?</Text>
-              <Text style={styles.alertSubText}>
-                삭제된 게시물은 복구할 수 없어요.
-              </Text>
-            </View>
+              <View style={styles.alertTextBlock}>
+                <Text style={styles.alertMainText}>
+                  게시물을 삭제하시겠어요?
+                </Text>
+                <Text style={styles.alertSubText}>
+                  삭제된 게시물은 복구할 수 없어요.
+                </Text>
+              </View>
 
-            <View style={styles.alertBtnRow}>
-              <Pressable
-                style={styles.alertLeftBtn}
-                onPress={() => setDeleteConfirmPost(null)}
-              >
-                <Text style={styles.alertLeftBtnText}>취소</Text>
-              </Pressable>
+              <View style={styles.alertBtnRow}>
+                <Pressable
+                  style={styles.alertLeftBtn}
+                  onPress={() => setDeleteConfirmPost(null)}
+                >
+                  <Text style={styles.alertLeftBtnText}>취소</Text>
+                </Pressable>
 
-              <Pressable
-                style={styles.alertRightBtn}
-                onPress={confirmDeletePost}
-              >
-                <Text style={styles.alertRightBtnText}>삭제하기</Text>
-              </Pressable>
-            </View>
+                <Pressable
+                  style={styles.alertRightBtn}
+                  onPress={confirmDeletePost}
+                >
+                  <Text style={styles.alertRightBtnText}>삭제하기</Text>
+                </Pressable>
+              </View>
             </Pressable>
           </AnimatedModalContent>
         </Pressable>
@@ -1199,12 +1209,12 @@ const styles = StyleSheet.create({
   submitButtonInner: {
     height: rs(53),
     borderRadius: rs(20),
-    backgroundColor: "#91BFFF",
+    backgroundColor: "#91bfff",
     alignItems: "center",
     justifyContent: "center",
   },
   submitButtonDisabled: {
-    backgroundColor: "#D4D7D6",
+    backgroundColor: "#d4d7d6",
   },
   submitButtonText: {
     color: "#FEFEFE",

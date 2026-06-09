@@ -28,6 +28,7 @@ import MoreVerticalIcon from "@/assets/icon/saerok/MoreVerticalIcon";
 import SimpleHeader from "@/components/common/SimpleHeader";
 import AnimatedModalContent from "@/components/common/AnimatedModalContent";
 import ProfileAvatar from "@/components/my/ProfileAvatar";
+import FreeBoardComposeSheet from "@/components/nest/FreeBoardComposeSheet";
 import CommentInputBar from "@/components/saerok/CommentInputBar";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -354,6 +355,9 @@ export default function FreeBoardDetailScreen() {
   const [deleteVisible, setDeleteVisible] = useState(false);
   const [editVisible, setEditVisible] = useState(false);
   const [editText, setEditText] = useState("");
+  const [postEditMounted, setPostEditMounted] = useState(false);
+  const [postEditOpen, setPostEditOpen] = useState(false);
+  const [postEditText, setPostEditText] = useState("");
   const [saving, setSaving] = useState(false);
   const commentSubmittingRef = useRef(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
@@ -368,6 +372,10 @@ export default function FreeBoardDetailScreen() {
       ? rs(24)
       : Math.max(rs(24), insets.bottom + TAB_BAR_HEIGHT - rs(25));
   const extraVisiblePadding = rs(76);
+  const contentBottomPadding =
+    INPUT_BAR_HEIGHT +
+    (keyboardHeight > 0 ? keyboardHeight : 0) +
+    (replySelection ? replyScrollSpacer : 0);
 
   useEffect(() => {
     replySelectionRef.current = replySelection;
@@ -500,12 +508,30 @@ export default function FreeBoardDetailScreen() {
 
   const handleEdit = () => {
     if (!optionTarget) return;
+    const target = optionTarget;
     setOptionVisible(false);
     InteractionManager.runAfterInteractions(() => {
-      setEditText(optionTarget.content);
+      if (target.kind === "post") {
+        setPostEditText(target.content);
+        setPostEditMounted(true);
+        setPostEditOpen(true);
+        return;
+      }
+
+      setEditText(target.content);
       setEditVisible(true);
     });
   };
+
+  const closePostEditSheet = useCallback(() => {
+    Keyboard.dismiss();
+    setPostEditOpen(false);
+  }, []);
+
+  const handlePostEditClosed = useCallback(() => {
+    setPostEditMounted(false);
+    setPostEditText("");
+  }, []);
 
   const handleDelete = () => {
     setOptionVisible(false);
@@ -544,6 +570,23 @@ export default function FreeBoardDetailScreen() {
       }
 
       setEditVisible(false);
+      await loadDetail();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submitPostEdit = async () => {
+    if (!optionTarget || optionTarget.kind !== "post") return;
+    const trimmed = postEditText.trim();
+    if (!trimmed || saving) return;
+
+    try {
+      setSaving(true);
+      await updateFreeBoardPostApi(optionTarget.postId, {
+        content: trimmed,
+      });
+      closePostEditSheet();
       await loadDetail();
     } finally {
       setSaving(false);
@@ -600,8 +643,7 @@ export default function FreeBoardDetailScreen() {
             contentContainerStyle={[
               styles.content,
               {
-                paddingBottom:
-                  INPUT_BAR_HEIGHT + (replySelection ? replyScrollSpacer : 0),
+                paddingBottom: contentBottomPadding,
               },
             ]}
             showsVerticalScrollIndicator={false}
@@ -698,7 +740,14 @@ export default function FreeBoardDetailScreen() {
                   <Text style={styles.contentText}>{post.content}</Text>
                 </View>
 
-                <View style={styles.commentsSection}>
+                <View
+                  style={[
+                    styles.commentsSection,
+                    comments.length === 0
+                      ? styles.commentsSectionEmpty
+                      : styles.commentsSectionFilled,
+                  ]}
+                >
                   <View style={styles.commentsHeader}>
                     <Text style={styles.commentsTitle}>댓글</Text>
                     <Text style={styles.commentsCount}>
@@ -786,6 +835,20 @@ export default function FreeBoardDetailScreen() {
         onDelete={handleDelete}
       />
 
+      <FreeBoardComposeSheet
+        mounted={postEditMounted}
+        open={postEditOpen}
+        text={postEditText}
+        onChangeText={setPostEditText}
+        onClose={closePostEditSheet}
+        onSubmit={submitPostEdit}
+        submitting={saving}
+        nickname={post?.nickname?.trim() || "사용자"}
+        avatarUrl={postAvatarUrl || null}
+        onClosed={handlePostEditClosed}
+        submitLabel="수정하기"
+      />
+
       <Modal
         transparent
         visible={deleteVisible}
@@ -798,33 +861,33 @@ export default function FreeBoardDetailScreen() {
         >
           <AnimatedModalContent visible={deleteVisible}>
             <Pressable style={styles.alertCard} onPress={() => {}}>
-            <NoticeIcon width={rs(30)} height={rs(30)} color="#91BFFF" />
+              <NoticeIcon width={rs(30)} height={rs(30)} color="#91BFFF" />
 
-            <View style={styles.alertTextBlock}>
-              <Text style={styles.alertMainText}>
-                {optionTarget?.kind === "post"
-                  ? "게시물을 삭제하시겠어요?"
-                  : "댓글을 삭제하시겠어요?"}
-              </Text>
-              <Text style={styles.alertSubText}>
-                {optionTarget?.kind === "post"
-                  ? "삭제된 게시물은 복구할 수 없어요."
-                  : "삭제된 댓글은 복구할 수 없어요."}
-              </Text>
-            </View>
+              <View style={styles.alertTextBlock}>
+                <Text style={styles.alertMainText}>
+                  {optionTarget?.kind === "post"
+                    ? "게시물을 삭제하시겠어요?"
+                    : "댓글을 삭제하시겠어요?"}
+                </Text>
+                <Text style={styles.alertSubText}>
+                  {optionTarget?.kind === "post"
+                    ? "삭제된 게시물은 복구할 수 없어요."
+                    : "삭제된 댓글은 복구할 수 없어요."}
+                </Text>
+              </View>
 
-            <View style={styles.alertBtnRow}>
-              <Pressable
-                style={styles.alertLeftBtn}
-                onPress={() => setDeleteVisible(false)}
-              >
-                <Text style={styles.alertLeftBtnText}>취소</Text>
-              </Pressable>
+              <View style={styles.alertBtnRow}>
+                <Pressable
+                  style={styles.alertLeftBtn}
+                  onPress={() => setDeleteVisible(false)}
+                >
+                  <Text style={styles.alertLeftBtnText}>취소</Text>
+                </Pressable>
 
-              <Pressable style={styles.alertRightBtn} onPress={confirmDelete}>
-                <Text style={styles.alertRightBtnText}>삭제하기</Text>
-              </Pressable>
-            </View>
+                <Pressable style={styles.alertRightBtn} onPress={confirmDelete}>
+                  <Text style={styles.alertRightBtnText}>삭제하기</Text>
+                </Pressable>
+              </View>
             </Pressable>
           </AnimatedModalContent>
         </Pressable>
@@ -848,33 +911,34 @@ export default function FreeBoardDetailScreen() {
               style={[styles.alertCard, styles.editCard]}
               onPress={() => {}}
             >
-            <Text style={styles.editTitle}>
-              {optionTarget?.kind === "post" ? "게시물 수정" : "댓글 수정"}
-            </Text>
+              <Text style={styles.editTitle}>
+                {optionTarget?.kind === "post" ? "게시물 수정" : "댓글 수정"}
+              </Text>
 
-            <TextInput
-              value={editText}
-              onChangeText={setEditText}
-              multiline
-              autoFocus
-              textAlignVertical="top"
-              style={styles.editInput}
-            />
+              <TextInput
+                value={editText}
+                onChangeText={setEditText}
+                multiline
+                scrollEnabled
+                autoFocus
+                textAlignVertical="top"
+                style={styles.editInput}
+              />
 
-            <View style={styles.alertBtnRow}>
-              <Pressable
-                style={styles.alertLeftBtn}
-                onPress={() => setEditVisible(false)}
-              >
-                <Text style={styles.alertLeftBtnText}>취소</Text>
-              </Pressable>
+              <View style={styles.alertBtnRow}>
+                <Pressable
+                  style={styles.alertLeftBtn}
+                  onPress={() => setEditVisible(false)}
+                >
+                  <Text style={styles.alertLeftBtnText}>취소</Text>
+                </Pressable>
 
-              <Pressable style={styles.alertRightBtn} onPress={submitEdit}>
-                <Text style={styles.alertRightBtnText}>
-                  {saving ? "저장 중" : "수정하기"}
-                </Text>
-              </Pressable>
-            </View>
+                <Pressable style={styles.alertRightBtn} onPress={submitEdit}>
+                  <Text style={styles.alertRightBtnText}>
+                    {saving ? "저장 중" : "수정하기"}
+                  </Text>
+                </Pressable>
+              </View>
             </Pressable>
           </AnimatedModalContent>
         </Pressable>
@@ -993,11 +1057,15 @@ const styles = StyleSheet.create({
     fontWeight: "400",
   },
   commentsSection: {
-    flex: 1,
-    minHeight: rs(420),
     backgroundColor: "#F2F2F2",
     paddingTop: rs(17),
     paddingHorizontal: rs(24),
+  },
+  commentsSectionEmpty: {
+    paddingBottom: rs(20),
+  },
+  commentsSectionFilled: {
+    paddingBottom: 0,
   },
   commentsHeader: {
     flexDirection: "row",
@@ -1228,6 +1296,7 @@ const styles = StyleSheet.create({
   },
   editCard: {
     alignItems: "stretch",
+    maxHeight: "82%",
   },
   editTitle: {
     textAlign: "center",
@@ -1238,6 +1307,7 @@ const styles = StyleSheet.create({
   },
   editInput: {
     minHeight: rs(140),
+    maxHeight: rs(320),
     borderWidth: 1,
     borderColor: "#E5E7EB",
     borderRadius: rs(14),

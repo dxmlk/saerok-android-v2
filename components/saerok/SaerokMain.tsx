@@ -1,6 +1,7 @@
+import { BlurView } from "@react-native-community/blur";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Rect } from "react-native-svg";
 
 import AddSaerokDexIcon from "@/assets/icon/button/AddSaerokDexIcon";
@@ -86,6 +87,19 @@ export default function SaerokMain({
         <View style={styles.circlesPos}>
           <SaerokCirclesBg width={rs(543)} height={rs(550)} />
         </View>
+        <BlurView
+          blurType="light"
+          blurAmount={40}
+          {...(Platform.OS === "android"
+            ? {
+                blurRadius: 25,
+                downsampleFactor: 12,
+                overlayColor: "transparent",
+              }
+            : {})}
+          reducedTransparencyFallbackColor="#F2F2F2"
+          style={styles.blur}
+        />
         <View style={styles.overlay} />
       </View>
 
@@ -176,9 +190,12 @@ const styles = StyleSheet.create({
     left: rs(-75),
     top: rs(-90),
   },
+  blur: {
+    ...StyleSheet.absoluteFillObject,
+  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(242,242,242,0.60)",
+    backgroundColor: "rgba(242,242,242,0.30)",
   },
   notificationBtn: {
     position: "absolute",
