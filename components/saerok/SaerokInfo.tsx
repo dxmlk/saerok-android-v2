@@ -77,6 +77,7 @@ export type SaerokInfoProps = {
   birdInfo: BirdInfo;
   user: UserInfo;
   isMine?: boolean;
+  initialSheet?: "comments" | "likes" | "suggestions" | null;
 };
 
 function formatDate(dateString: string) {
@@ -249,6 +250,7 @@ export default function SaerokInfo({
   user,
   accessLevel,
   isMine = false,
+  initialSheet = null,
 }: SaerokInfoProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -289,6 +291,7 @@ export default function SaerokInfo({
   >(null);
   const [actionButtonVariant, setActionButtonVariant] =
     useState<SaerokActionButtonVariant | null>(null);
+  const initialSheetOpenedRef = React.useRef(false);
 
   const selectedSuggestionRatio = selectedSuggestion?.birdId
     ? (suggestionPreviewRatioMap[selectedSuggestion.birdId] ??
@@ -395,6 +398,21 @@ export default function SaerokInfo({
       setSuggestionLoading(false);
     }
   };
+
+  React.useEffect(() => {
+    if (
+      initialSheet !== "suggestions" ||
+      initialSheetOpenedRef.current ||
+      !collectionId
+    ) {
+      return;
+    }
+
+    initialSheetOpenedRef.current = true;
+    requestAnimationFrame(() => {
+      void openSuggestionSheet();
+    });
+  }, [initialSheet, collectionId]);
 
   const closeSuggestionSheet = React.useCallback(
     (done?: () => void) => {
@@ -1411,6 +1429,7 @@ export default function SaerokInfo({
             variant={
               actionButtonVariant === "vertical" ? "vertical" : "floating"
             }
+            autoOpen={initialSheet === "likes"}
           />
           <View
             style={
@@ -1425,6 +1444,7 @@ export default function SaerokInfo({
             variant={
               actionButtonVariant === "vertical" ? "vertical" : "floating"
             }
+            autoOpen={initialSheet === "comments"}
           />
         </View>
       ) : null}

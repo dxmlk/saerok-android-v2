@@ -20,7 +20,6 @@ import React, {
   useState,
 } from "react";
 import {
-  ActivityIndicator,
   Image,
   Linking,
   Platform,
@@ -211,6 +210,7 @@ export default function SaerokDetailScreen() {
   const params = useLocalSearchParams<{
     collectionId: string;
     from?: string;
+    initialSheet?: string;
     returnTo?: string;
     returnCollectionId?: string;
     returnLat?: string;
@@ -447,9 +447,16 @@ export default function SaerokDetailScreen() {
 
   if (loading || authLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color="#4190FF" />
-      </View>
+      <SafeAreaView style={styles.loadingSafe} edges={["top"]}>
+        <View style={styles.loadingHeaderSpacer} />
+        <View style={styles.loadingHeroWrap}>
+          <View style={styles.loadingHeroSkeleton} />
+        </View>
+        <View style={styles.loadingBody}>
+          <View style={styles.loadingLineWide} />
+          <View style={styles.loadingLineShort} />
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -550,6 +557,13 @@ export default function SaerokDetailScreen() {
           thumbnailProfileImageUrl: item.user?.thumbnailProfileImageUrl ?? null,
         }}
         isMine={isMine}
+        initialSheet={
+          params.initialSheet === "comments" ||
+          params.initialSheet === "likes" ||
+          params.initialSheet === "suggestions"
+            ? params.initialSheet
+            : null
+        }
       />
       {isMine && shareOpen ? (
         <View style={[styles.shareOverlay, { top: -insets.top }]}>
@@ -684,6 +698,40 @@ export default function SaerokDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingSafe: {
+    flex: 1,
+    backgroundColor: "#F2F2F2",
+  },
+  loadingHeaderSpacer: {
+    height: rs(72),
+  },
+  loadingHeroWrap: {
+    paddingTop: rs(14),
+    paddingHorizontal: rs(9),
+  },
+  loadingHeroSkeleton: {
+    width: "100%",
+    aspectRatio: 1,
+    borderRadius: rs(35),
+    backgroundColor: "#E5E7EB",
+  },
+  loadingBody: {
+    marginHorizontal: rs(24),
+    marginTop: rs(24),
+    gap: rs(10),
+  },
+  loadingLineWide: {
+    width: "58%",
+    height: rs(22),
+    borderRadius: rs(11),
+    backgroundColor: "#E5E7EB",
+  },
+  loadingLineShort: {
+    width: "36%",
+    height: rs(16),
+    borderRadius: rs(8),
+    backgroundColor: "#E5E7EB",
+  },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
   shareOverlay: {
     ...StyleSheet.absoluteFillObject,

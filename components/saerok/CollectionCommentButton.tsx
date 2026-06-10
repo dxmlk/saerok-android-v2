@@ -18,6 +18,7 @@ type Props = {
   collectionId: number;
   authorNickname?: string | null;
   variant?: "default" | "floating" | "vertical";
+  autoOpen?: boolean;
 };
 
 const KOR = {
@@ -29,9 +30,11 @@ export default function CollectionCommentButton({
   collectionId,
   authorNickname,
   variant = "default",
+  autoOpen = false,
 }: Props) {
   const commentCount = useRef(0);
   const submitLockRef = useRef(false);
+  const autoOpenedRef = useRef(false);
   const [commentList, setCommentList] = useState<CommentBoxProps[]>([]);
   const [open, setOpen] = useState(false);
   const [, force] = useState(0);
@@ -55,6 +58,15 @@ export default function CollectionCommentButton({
     if (!collectionId) return;
     refresh();
   }, [collectionId]);
+
+  useEffect(() => {
+    if (!autoOpen || autoOpenedRef.current || !collectionId) return;
+    autoOpenedRef.current = true;
+    requestAnimationFrame(() => {
+      void refresh();
+      setOpen(true);
+    });
+  }, [autoOpen, collectionId]);
 
   const handleSubmit = async (content: string) => {
     if (submitLockRef.current) return;

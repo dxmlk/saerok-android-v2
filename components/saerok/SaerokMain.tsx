@@ -1,7 +1,6 @@
-import { BlurView } from "@react-native-community/blur";
 import { useRouter } from "expo-router";
 import React, { useEffect, useMemo, useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Rect } from "react-native-svg";
 
 import AddSaerokDexIcon from "@/assets/icon/button/AddSaerokDexIcon";
@@ -85,21 +84,10 @@ export default function SaerokMain({
     <View style={[styles.hero, { height: rs(420) + topInset }]}>
       <View pointerEvents="none" style={styles.bgWrap}>
         <View style={styles.circlesPos}>
-          <SaerokCirclesBg width={rs(543)} height={rs(550)} />
+          <SaerokCirclesBg width={rs(543)} height={rs(550)} soft />
         </View>
-        <BlurView
-          blurType="light"
-          blurAmount={40}
-          {...(Platform.OS === "android"
-            ? {
-                blurRadius: 25,
-                downsampleFactor: 12,
-                overlayColor: "transparent",
-              }
-            : {})}
-          reducedTransparencyFallbackColor="#F2F2F2"
-          style={styles.blur}
-        />
+        <View style={styles.softWashStrong} />
+        <View style={styles.softWashLight} />
         <View style={styles.overlay} />
       </View>
 
@@ -187,15 +175,20 @@ const styles = StyleSheet.create({
   },
   circlesPos: {
     position: "absolute",
-    left: rs(-75),
-    top: rs(-90),
-  },
-  blur: {
-    ...StyleSheet.absoluteFillObject,
+    left: rs(-82),
+    top: rs(-96),
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(242,242,242,0.30)",
+    backgroundColor: "rgba(242,242,242,0.18)",
+  },
+  softWashStrong: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(242,242,242,0.24)",
+  },
+  softWashLight: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(254,254,254,0.08)",
   },
   notificationBtn: {
     position: "absolute",

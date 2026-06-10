@@ -1,6 +1,10 @@
 import MoreVerticalIcon from "@/assets/icon/saerok/MoreVerticalIcon";
+import AppAlertModal from "@/components/common/AppAlertModal";
 import SimpleHeader from "@/components/common/SimpleHeader";
 import TouchableOpacity from "@/components/common/TouchableOpacity";
+import { getAnnouncementDetail } from "@/services/api/announcements";
+import { fetchCollectionDetail } from "@/services/api/collections";
+import { fetchFreeBoardPostDetailApi } from "@/services/api/community";
 import {
   deleteAllNotificationsApi,
   deleteNotificationApi,
@@ -13,21 +17,18 @@ import {
 import { rfs, rs } from "@/theme";
 import { font } from "@/theme/typography";
 import { useFocusEffect, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
   Animated,
   Easing,
   FlatList,
   Image,
-  LayoutAnimation,
   Modal,
   PanResponder,
-  Platform,
   Pressable,
   StyleSheet,
   type StyleProp,
   Text,
-  UIManager,
   View,
   type ViewStyle,
 } from "react-native";
@@ -38,6 +39,173 @@ const SWIPE_ACTION_GAP = rs(9);
 const SWIPE_ACTION_WIDTH = rs(96);
 const SWIPE_REVEAL_WIDTH = SWIPE_ACTION_WIDTH + SWIPE_ACTION_GAP;
 const SWIPE_TRIGGER_THRESHOLD = rs(8);
+const USE_NOTIFICATION_DUMMY_DATA = false;
+
+const DUMMY_COLLECTION_IMAGE =
+  "https://images.unsplash.com/photo-1516233758813-a38d024919c5?q=80&w=400&auto=format&fit=crop";
+const DUMMY_ACTOR_IMAGE =
+  "https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=200&auto=format&fit=crop";
+
+function minutesAgo(minutes: number) {
+  return new Date(Date.now() - minutes * 60 * 1000).toISOString();
+}
+
+function getDummyNotifications(): NotificationItem[] {
+  return [
+    {
+      id: 9001,
+      type: "SYSTEM_ADMIN_MESSAGE",
+      actorId: null,
+      actorNickname: null,
+      actorProfileImageUrl: null,
+      payload: {
+        body:
+          "‘왜가리’ 새록이 삭제되었어요. 참 아쉽네요! 어떻게 하죠?? 운영팀 알림은 펼치면 전체 문장이 보여요.",
+      },
+      isRead: false,
+      createdAt: minutesAgo(60 * 24 * 3),
+    },
+    {
+      id: 9002,
+      type: "SYSTEM_ADMIN_MESSAGE",
+      actorId: null,
+      actorNickname: null,
+      actorProfileImageUrl: null,
+      payload: {
+        body:
+          "운영 정책 안내 메시지입니다. 접힌 상태와 펼친 상태의 높이를 확인하기 위한 두 번째 운영팀 알림이에요.",
+      },
+      isRead: true,
+      createdAt: minutesAgo(60 * 24 * 2),
+    },
+    {
+      id: 9010,
+      type: "COMMENTED_ON_COLLECTION",
+      actorId: 101,
+      actorNickname: "비둘기짱",
+      actorProfileImageUrl: DUMMY_ACTOR_IMAGE,
+      payload: {
+        collectionId: 1001,
+        collectionImageUrl: DUMMY_COLLECTION_IMAGE,
+        comment: "새 참 찍으셨네요.",
+      },
+      isRead: true,
+      createdAt: minutesAgo(60 * 24 * 3),
+    },
+    {
+      id: 9011,
+      type: "LIKED_ON_COLLECTION",
+      actorId: 102,
+      actorNickname: "비둘기짱",
+      actorProfileImageUrl: DUMMY_ACTOR_IMAGE,
+      payload: {
+        collectionId: 1002,
+        collectionImageUrl: DUMMY_COLLECTION_IMAGE,
+      },
+      isRead: false,
+      createdAt: minutesAgo(10),
+    },
+    {
+      id: 9012,
+      type: "SYSTEM_PUBLISHED_ANNOUNCEMENT",
+      actorId: null,
+      actorNickname: null,
+      actorProfileImageUrl: null,
+      payload: {
+        announcementId: 3001,
+        title: "답글 기능이 추가되었어요!",
+        body: "더 재미있어진 새록으로 다른 사람들과 소통해보세요.",
+        inAppBody: "더 재미있어진 새록으로 다른 사람들과 소통해보세요.",
+      },
+      isRead: false,
+      createdAt: minutesAgo(60 * 24 * 3),
+    },
+    {
+      id: 9013,
+      type: "SUGGESTED_BIRD_ID_ON_COLLECTION",
+      actorId: 103,
+      actorNickname: "두근두근",
+      actorProfileImageUrl: DUMMY_ACTOR_IMAGE,
+      payload: {
+        collectionId: 1003,
+        collectionImageUrl: DUMMY_COLLECTION_IMAGE,
+        suggestedName: "검은댕기해오라기",
+      },
+      isRead: true,
+      createdAt: minutesAgo(60 * 24 * 3),
+    },
+    {
+      id: 9014,
+      type: "BIRD_ID_SUGGESTED_ON_COLLECTION",
+      actorId: 104,
+      actorNickname: "새박사",
+      actorProfileImageUrl: DUMMY_ACTOR_IMAGE,
+      payload: {
+        collectionId: "1004",
+        collectionImageUrl: DUMMY_COLLECTION_IMAGE,
+        suggestedName: "왜가리",
+      },
+      isRead: false,
+      createdAt: minutesAgo(34),
+    },
+    {
+      id: 9015,
+      type: "BIRD_ID_ADOPTED_ON_COLLECTION",
+      actorId: 105,
+      actorNickname: "도감요정",
+      actorProfileImageUrl: DUMMY_ACTOR_IMAGE,
+      payload: {
+        collectionId: 1005,
+        collectionImageUrl: DUMMY_COLLECTION_IMAGE,
+        suggestedName: "쇠백로",
+      },
+      isRead: false,
+      createdAt: minutesAgo(42),
+    },
+    {
+      id: 9016,
+      type: "REPLIED_TO_COMMENT",
+      actorId: 106,
+      actorNickname: "댓글러",
+      actorProfileImageUrl: DUMMY_ACTOR_IMAGE,
+      payload: {
+        collectionId: 1006,
+        collectionImageUrl: DUMMY_COLLECTION_IMAGE,
+        commentId: 2001,
+        comment: "저도 그렇게 보여요!",
+      },
+      isRead: true,
+      createdAt: minutesAgo(73),
+    },
+    {
+      id: 9017,
+      type: "COMMENTED_ON_FREE_BOARD_POST",
+      actorId: 107,
+      actorNickname: "둥지친구",
+      actorProfileImageUrl: DUMMY_ACTOR_IMAGE,
+      payload: {
+        freeBoardPostId: 4001,
+        comment: "저도 궁금했던 내용이에요.",
+      },
+      isRead: false,
+      createdAt: minutesAgo(85),
+    },
+    {
+      id: 9018,
+      type: "REPLIED_TO_FREE_BOARD_COMMENT",
+      actorId: 108,
+      actorNickname: "자유로운새",
+      actorProfileImageUrl: DUMMY_ACTOR_IMAGE,
+      payload: {
+        freeBoardPostId: "4002",
+        freeBoardCommentId: 5001,
+        comment: "답글 남겨주셔서 고마워요.",
+      },
+      isRead: true,
+      createdAt: minutesAgo(120),
+    },
+  ];
+}
 
 function formatElapsed(value: string) {
   const target = new Date(value).getTime();
@@ -67,6 +235,15 @@ function getPayloadImage(payload: Record<string, unknown> | null) {
   );
 }
 
+function readNumericPayloadValue(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim().length > 0) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 function getCollectionId(payload: Record<string, unknown> | null) {
   if (!payload) return null;
   const candidates = [
@@ -74,28 +251,57 @@ function getCollectionId(payload: Record<string, unknown> | null) {
     payload.targetCollectionId,
     payload.saerokId,
   ];
-  const found = candidates.find((value) => typeof value === "number");
-  return typeof found === "number" ? found : null;
+  for (const candidate of candidates) {
+    const value = readNumericPayloadValue(candidate);
+    if (value != null) return value;
+  }
+  return null;
+}
+
+function getFreeBoardPostId(payload: Record<string, unknown> | null) {
+  if (!payload) return null;
+  return readNumericPayloadValue(payload.freeBoardPostId);
+}
+
+function getAnnouncementId(payload: Record<string, unknown> | null) {
+  if (!payload) return null;
+  return readNumericPayloadValue(payload.announcementId);
+}
+
+function getInitialSaerokSheet(type: NotificationType) {
+  switch (type as NotificationType) {
+    case "LIKED_ON_COLLECTION":
+      return "likes";
+    case "COMMENTED_ON_COLLECTION":
+    case "REPLIED_TO_COMMENT":
+    case "REPLIED_ON_COMMENT":
+      return "comments";
+    case "SUGGESTED_BIRD_ID_ON_COLLECTION":
+    case "BIRD_ID_SUGGESTED_ON_COLLECTION":
+    case "BIRD_ID_ADOPTED_ON_COLLECTION":
+      return "suggestions";
+    default:
+      return null;
+  }
+}
+
+function isMissingTargetError(error: any) {
+  const status = error?.response?.status;
+  return status === 404 || status === 410;
 }
 
 function isSystemNoticeType(type: NotificationType) {
-  return (
-    type === "NOTICE" ||
-    type === "SYSTEM_ADMIN_MESSAGE" ||
-    type === "SYSTEM_CONTENT_DELETED" ||
-    type === "SYSTEM_PUBLISHED_ANNOUNCEMENT"
-  );
+  return type === "SYSTEM_ADMIN_MESSAGE";
+}
+
+function isAnnouncementNoticeType(type: NotificationType) {
+  return type === "SYSTEM_PUBLISHED_ANNOUNCEMENT";
 }
 
 function getSystemNoticeLabel(item: NotificationItem) {
   switch (item.type as NotificationType) {
     case "SYSTEM_ADMIN_MESSAGE":
-      return "시스템";
-    case "SYSTEM_CONTENT_DELETED":
-      return "시스템";
-    case "SYSTEM_PUBLISHED_ANNOUNCEMENT":
-    case "NOTICE":
-      return "공지사항";
+      return "새록 운영팀";
     default:
       return "알림";
   }
@@ -109,22 +315,22 @@ function getSystemNoticeMessage(item: NotificationItem) {
           item.payload?.title ??
           "새로운 시스템 알림이 있어요.",
       ).replace(/\\n/g, "\n");
-    case "SYSTEM_CONTENT_DELETED":
-      return String(
-        item.payload?.reason ?? "게시물이 운영 정책에 따라 삭제되었어요.",
-      );
-    case "SYSTEM_PUBLISHED_ANNOUNCEMENT":
-      return String(
-        item.payload?.inAppBody ??
-          item.payload?.body ??
-          item.payload?.title ??
-          "새로운 공지사항이 도착했어요.",
-      ).replace(/\\n/g, "\n");
-    case "NOTICE":
-      return String(item.payload?.message ?? "새로운 공지사항이 도착했어요.");
     default:
       return "";
   }
+}
+
+function getAnnouncementTitle(item: NotificationItem) {
+  return typeof item.payload?.title === "string" &&
+    item.payload.title.trim().length > 0
+    ? item.payload.title.trim()
+    : "공지사항";
+}
+
+function getAnnouncementBody(item: NotificationItem) {
+  const value =
+    item.payload?.inAppBody ?? item.payload?.body ?? item.payload?.message;
+  return typeof value === "string" ? value.replace(/\\n/g, "\n").trim() : "";
 }
 
 function getNotificationText(item: NotificationItem) {
@@ -142,6 +348,7 @@ function getNotificationText(item: NotificationItem) {
       return commentText
         ? `${nickname}님이 나의 새록에 댓글을 남겼어요. "${commentText}"`
         : `${nickname}님이 나의 새록에 댓글을 남겼어요.`;
+    case "REPLIED_TO_COMMENT":
     case "REPLIED_ON_COMMENT":
       return `${nickname}님이 나의 댓글에 답글을 남겼어요.`;
     case "BIRD_ID_SUGGESTED_ON_COLLECTION":
@@ -149,10 +356,17 @@ function getNotificationText(item: NotificationItem) {
       return "두근두근! 새로운 의견이 공유됐어요. 확인해볼까요?";
     case "BIRD_ID_ADOPTED_ON_COLLECTION":
       return "새 이름 제안이 채택되었어요.";
-    case "SYSTEM_CONTENT_DELETED":
-    case "SYSTEM_ADMIN_MESSAGE":
     case "SYSTEM_PUBLISHED_ANNOUNCEMENT":
-    case "NOTICE":
+      return `${getAnnouncementTitle(item)} ${getAnnouncementBody(item)}`;
+    case "COMMENTED_ON_FREE_BOARD_POST":
+      return commentText
+        ? `${nickname}님이 나의 자유게시판 글에 댓글을 남겼어요. "${commentText}"`
+        : `${nickname}님이 나의 자유게시판 글에 댓글을 남겼어요.`;
+    case "REPLIED_TO_FREE_BOARD_COMMENT":
+      return commentText
+        ? `${nickname}님이 나의 자유게시판 댓글에 답글을 남겼어요. "${commentText}"`
+        : `${nickname}님이 나의 자유게시판 댓글에 답글을 남겼어요.`;
+    case "SYSTEM_ADMIN_MESSAGE":
       return getSystemNoticeMessage(item);
     default:
       return `${nickname}님으로부터 새로운 알림이 왔어요.`;
@@ -173,8 +387,17 @@ function getNotificationBodyText(item: NotificationItem) {
       return commentText
         ? `님이 나의 새록에 댓글을 남겼어요. "${commentText}"`
         : "님이 나의 새록에 댓글을 남겼어요.";
+    case "REPLIED_TO_COMMENT":
     case "REPLIED_ON_COMMENT":
       return "님이 나의 댓글에 답글을 남겼어요.";
+    case "COMMENTED_ON_FREE_BOARD_POST":
+      return commentText
+        ? `님이 나의 자유게시판 글에 댓글을 남겼어요. "${commentText}"`
+        : "님이 나의 자유게시판 글에 댓글을 남겼어요.";
+    case "REPLIED_TO_FREE_BOARD_COMMENT":
+      return commentText
+        ? `님이 나의 자유게시판 댓글에 답글을 남겼어요. "${commentText}"`
+        : "님이 나의 자유게시판 댓글에 답글을 남겼어요.";
     default:
       return null;
   }
@@ -197,11 +420,9 @@ function NotificationOptionMenu({
 }) {
   const scale = React.useRef(new Animated.Value(0.92)).current;
   const opacity = React.useRef(new Animated.Value(0)).current;
-  const [mounted, setMounted] = React.useState(visible);
 
   React.useEffect(() => {
     if (visible) {
-      setMounted(true);
       scale.setValue(0.92);
       opacity.setValue(0);
       Animated.parallel([
@@ -221,28 +442,15 @@ function NotificationOptionMenu({
       return;
     }
 
-    if (!mounted) return;
-    Animated.parallel([
-      Animated.timing(scale, {
-        toValue: 0.92,
-        duration: 120,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 100,
-        easing: Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start(() => setMounted(false));
-  }, [mounted, opacity, scale, visible]);
+    scale.setValue(0.92);
+    opacity.setValue(0);
+  }, [opacity, scale, visible]);
 
-  if (!mounted) return null;
+  if (!visible) return null;
 
   return (
     <Modal
-      visible={mounted}
+      visible={visible}
       transparent
       animationType="none"
       onRequestClose={onClose}
@@ -286,11 +494,14 @@ function NotificationRow({
   setOpenRowId: React.Dispatch<React.SetStateAction<number | null>>;
 }) {
   const isSystemNotice = isSystemNoticeType(item.type);
-  const imageUrl = isSystemNotice ? null : getPayloadImage(item.payload);
+  const isAnnouncementNotice = isAnnouncementNoticeType(item.type);
+  const imageUrl =
+    isSystemNotice || isAnnouncementNotice ? null : getPayloadImage(item.payload);
   const collectionId = getCollectionId(item.payload);
   const isRead = item.isRead;
   const nickname = item.actorNickname ?? "알림";
-  const bodyText = isSystemNotice ? null : getNotificationBodyText(item);
+  const bodyText =
+    isSystemNotice || isAnnouncementNotice ? null : getNotificationBodyText(item);
   const textColor = isRead ? "#979797" : "#0D0D0D";
   const translateX = React.useRef(new Animated.Value(0)).current;
   const currentXRef = React.useRef(0);
@@ -416,7 +627,7 @@ function NotificationRow({
           ) : null}
 
           <View style={styles.avatarWrap}>
-            {isSystemNotice ? (
+            {isSystemNotice || isAnnouncementNotice ? (
               <View style={styles.noticeAvatar}>
                 <Svg
                   width={rs(13)}
@@ -439,7 +650,7 @@ function NotificationRow({
           </View>
 
           <View style={styles.body}>
-            {isSystemNotice ? (
+            {isSystemNotice || isAnnouncementNotice ? (
               <View
                 style={[
                   styles.noticeBadge,
@@ -447,7 +658,7 @@ function NotificationRow({
                 ]}
               >
                 <Text style={styles.noticeBadgeText}>
-                  {getSystemNoticeLabel(item)}
+                  {isAnnouncementNotice ? "공지사항" : getSystemNoticeLabel(item)}
                 </Text>
               </View>
             ) : null}
@@ -460,7 +671,16 @@ function NotificationRow({
               ]}
               numberOfLines={isSystemNotice ? 3 : 2}
             >
-              {bodyText ? (
+              {isAnnouncementNotice ? (
+                <>
+                  <Text style={[styles.messageNickname, { color: textColor }]}>
+                    {getAnnouncementTitle(item)}
+                  </Text>
+                  {getAnnouncementBody(item)
+                    ? ` ${getAnnouncementBody(item)}`
+                    : ""}
+                </>
+              ) : bodyText ? (
                 <>
                   <Text style={[styles.messageNickname, { color: textColor }]}>
                     {nickname}
@@ -506,19 +726,38 @@ function SystemNotificationRow({
   const rotateValue = React.useRef(
     new Animated.Value(expanded ? 1 : 0),
   ).current;
+  const expandValue = React.useRef(
+    new Animated.Value(expanded ? 1 : 0),
+  ).current;
   const rotate = rotateValue.interpolate({
     inputRange: [0, 1],
     outputRange: ["90deg", "-90deg"],
   });
+  const messageMaxHeight = expandValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [rfs(20), rs(260)],
+  });
+  const messageOpacity = expandValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.9, 1],
+  });
 
   React.useEffect(() => {
-    Animated.timing(rotateValue, {
-      toValue: expanded ? 1 : 0,
-      duration: 500,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: true,
-    }).start();
-  }, [expanded, rotateValue]);
+    Animated.parallel([
+      Animated.timing(rotateValue, {
+        toValue: expanded ? 1 : 0,
+        duration: 500,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(expandValue, {
+        toValue: expanded ? 1 : 0,
+        duration: 500,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: false,
+      }),
+    ]).start();
+  }, [expanded, expandValue, rotateValue]);
 
   return (
     <TouchableOpacity
@@ -543,13 +782,20 @@ function SystemNotificationRow({
         <View style={styles.systemNoticeBadge}>
           <Text style={styles.systemNoticeBadgeText}>새록 운영팀</Text>
         </View>
-        <Text
-          style={styles.systemNoticeMessage}
-          numberOfLines={expanded ? undefined : 1}
-          ellipsizeMode="tail"
+        <Animated.View
+          style={[
+            styles.systemNoticeMessageClip,
+            { maxHeight: messageMaxHeight, opacity: messageOpacity },
+          ]}
         >
-          {message}
-        </Text>
+          <Text
+            style={styles.systemNoticeMessage}
+            numberOfLines={expanded ? undefined : 1}
+            ellipsizeMode="tail"
+          >
+            {message}
+          </Text>
+        </Animated.View>
         <Text style={styles.time}>{formatElapsed(item.createdAt)}</Text>
       </View>
 
@@ -575,17 +821,18 @@ export default function SaerokNotificationsScreen() {
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [menuVisible, setMenuVisible] = useState(false);
   const [openRowId, setOpenRowId] = useState<number | null>(null);
+  const [deletedTargetModalVisible, setDeletedTargetModalVisible] =
+    useState(false);
   const [expandedSystemIds, setExpandedSystemIds] = useState<Set<number>>(
     () => new Set(),
   );
 
-  useEffect(() => {
-    if (Platform.OS === "android") {
-      UIManager.setLayoutAnimationEnabledExperimental?.(true);
-    }
-  }, []);
-
   const load = useCallback(async () => {
+    if (USE_NOTIFICATION_DUMMY_DATA) {
+      setItems(getDummyNotifications());
+      return;
+    }
+
     try {
       const res = await fetchNotificationsApi();
       setItems(res.items ?? []);
@@ -616,7 +863,9 @@ export default function SaerokNotificationsScreen() {
   const markItemRead = useCallback(async (item: NotificationItem) => {
     if (item.isRead) return;
     try {
-      await readNotificationApi(item.id);
+      if (!USE_NOTIFICATION_DUMMY_DATA) {
+        await readNotificationApi(item.id);
+      }
       setItems((prev) =>
         prev.map((candidate) =>
           candidate.id === item.id ? { ...candidate, isRead: true } : candidate,
@@ -631,20 +880,54 @@ export default function SaerokNotificationsScreen() {
 
       const collectionId = getCollectionId(item.payload);
       if (collectionId) {
-        const { openSaerokDetail } = require("@/lib/navigation");
-        openSaerokDetail(router, collectionId, { from: "notifications" });
+        try {
+          await fetchCollectionDetail(collectionId);
+          const { openSaerokDetail } = require("@/lib/navigation");
+          const initialSheet = getInitialSaerokSheet(item.type);
+          openSaerokDetail(router, collectionId, {
+            from: "notifications",
+            extraParams: initialSheet ? { initialSheet } : undefined,
+          });
+        } catch (error) {
+          if (isMissingTargetError(error)) {
+            setDeletedTargetModalVisible(true);
+            return;
+          }
+          console.log("[notifications] collection target check failed", error);
+        }
         return;
       }
 
-      const announcementId =
-        typeof item.payload?.announcementId === "number"
-          ? item.payload.announcementId
-          : null;
+      const freeBoardPostId = getFreeBoardPostId(item.payload);
+      if (freeBoardPostId) {
+        try {
+          await fetchFreeBoardPostDetailApi(freeBoardPostId);
+          router.push(`/nest/freeboard-detail/${freeBoardPostId}` as any);
+        } catch (error) {
+          if (isMissingTargetError(error)) {
+            setDeletedTargetModalVisible(true);
+            return;
+          }
+          console.log("[notifications] free board target check failed", error);
+        }
+        return;
+      }
+
+      const announcementId = getAnnouncementId(item.payload);
       if (announcementId) {
-        router.push({
-          pathname: "/announcement/[id]",
-          params: { id: String(announcementId) },
-        });
+        try {
+          await getAnnouncementDetail(announcementId);
+          router.push({
+            pathname: "/announcement/[id]",
+            params: { id: String(announcementId) },
+          });
+        } catch (error) {
+          if (isMissingTargetError(error)) {
+            setDeletedTargetModalVisible(true);
+            return;
+          }
+          console.log("[notifications] announcement target check failed", error);
+        }
       }
     },
     [markItemRead, router],
@@ -652,13 +935,6 @@ export default function SaerokNotificationsScreen() {
 
   const handlePressSystemItem = useCallback(
     async (item: NotificationItem) => {
-      LayoutAnimation.configureNext({
-        duration: 500,
-        update: {
-          type: LayoutAnimation.Types.easeInEaseOut,
-          property: LayoutAnimation.Properties.opacity,
-        },
-      });
       setExpandedSystemIds((prev) => {
         const next = new Set(prev);
         if (next.has(item.id)) {
@@ -675,7 +951,9 @@ export default function SaerokNotificationsScreen() {
 
   const handleDeleteItem = useCallback(async (item: NotificationItem) => {
     try {
-      await deleteNotificationApi(item.id);
+      if (!USE_NOTIFICATION_DUMMY_DATA) {
+        await deleteNotificationApi(item.id);
+      }
       setItems((prev) => prev.filter((candidate) => candidate.id !== item.id));
     } finally {
       setOpenRowId((prev) => (prev === item.id ? null : prev));
@@ -684,7 +962,9 @@ export default function SaerokNotificationsScreen() {
 
   const handleReadAll = useCallback(async () => {
     try {
-      await readAllNotificationsApi();
+      if (!USE_NOTIFICATION_DUMMY_DATA) {
+        await readAllNotificationsApi();
+      }
       setItems((prev) => prev.map((item) => ({ ...item, isRead: true })));
     } finally {
       setMenuVisible(false);
@@ -693,7 +973,9 @@ export default function SaerokNotificationsScreen() {
 
   const handleDeleteAll = useCallback(async () => {
     try {
-      await deleteAllNotificationsApi();
+      if (!USE_NOTIFICATION_DUMMY_DATA) {
+        await deleteAllNotificationsApi();
+      }
       setItems([]);
     } finally {
       setMenuVisible(false);
@@ -705,7 +987,9 @@ export default function SaerokNotificationsScreen() {
     if (targetIds.length === 0) return;
 
     try {
-      await Promise.all(targetIds.map((id) => deleteNotificationApi(id)));
+      if (!USE_NOTIFICATION_DUMMY_DATA) {
+        await Promise.all(targetIds.map((id) => deleteNotificationApi(id)));
+      }
       setItems((prev) => prev.filter((item) => !targetIds.includes(item.id)));
       setExpandedSystemIds((prev) => {
         const next = new Set(prev);
@@ -797,6 +1081,13 @@ export default function SaerokNotificationsScreen() {
         onClose={() => setMenuVisible(false)}
         onReadAll={handleReadAll}
         onDeleteAll={handleDeleteAll}
+      />
+
+      <AppAlertModal
+        visible={deletedTargetModalVisible}
+        mainText="삭제된 게시물입니다."
+        buttonText="확인"
+        onClose={() => setDeletedTargetModalVisible(false)}
       />
     </SafeAreaView>
   );
@@ -916,6 +1207,9 @@ const styles = StyleSheet.create({
     fontSize: rfs(15),
     fontWeight: "400",
     lineHeight: rfs(20),
+  },
+  systemNoticeMessageClip: {
+    overflow: "hidden",
   },
   systemExpandButton: {
     position: "absolute",

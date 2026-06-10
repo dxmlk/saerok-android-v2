@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   BackHandler,
   Image,
   ScrollView,
@@ -198,8 +197,19 @@ export default function DexDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.loadingWrap}>
-        <ActivityIndicator color="#4190FF" />
+      <SafeAreaView style={styles.root} edges={["left", "right"]}>
+        <View
+          style={[styles.imageSection, { paddingTop: insets.top + rs(20) }]}
+        >
+          <View style={styles.imageWrap}>
+            <View style={[styles.mainImage, styles.mainImageFallback]} />
+          </View>
+        </View>
+        <View style={styles.dexSkeletonBody}>
+          <View style={styles.dexSkeletonTitle} />
+          <View style={styles.dexSkeletonLine} />
+          <View style={styles.dexSkeletonLineShort} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -412,6 +422,29 @@ const styles = StyleSheet.create({
   },
   mainImageFallback: {
     aspectRatio: 1,
+  },
+  dexSkeletonBody: {
+    marginHorizontal: rs(24),
+    marginTop: rs(24),
+    gap: rs(10),
+  },
+  dexSkeletonTitle: {
+    width: "46%",
+    height: rs(24),
+    borderRadius: rs(12),
+    backgroundColor: "#E5E7EB",
+  },
+  dexSkeletonLine: {
+    width: "72%",
+    height: rs(16),
+    borderRadius: rs(8),
+    backgroundColor: "#E5E7EB",
+  },
+  dexSkeletonLineShort: {
+    width: "50%",
+    height: rs(16),
+    borderRadius: rs(8),
+    backgroundColor: "#E5E7EB",
   },
   chipsRow: {
     marginTop: rs(13),

@@ -346,14 +346,12 @@ export default function MapIndex() {
   const refreshAndMoveToCurrentLocation = async () => {
     const requestId = ++locationRequestSeqRef.current;
 
-    previewLocation(myLocation, { zoom: DEFAULT_ZOOM });
-
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") return;
 
       const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+        accuracy: Location.Accuracy.High,
       });
       if (requestId !== locationRequestSeqRef.current) return;
 
@@ -361,7 +359,15 @@ export default function MapIndex() {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
       };
-      previewLocation(next, { saveAsMyLocation: true, zoom: DEFAULT_ZOOM });
+      setMyLocation(next);
+      setMapZoom(DEFAULT_ZOOM);
+      mapRef.current?.animateCameraTo({
+        latitude: next.latitude,
+        longitude: next.longitude,
+        zoom: DEFAULT_ZOOM,
+        duration: 280,
+      });
+      await researchAt(next, isMineOnly, DEFAULT_ZOOM);
     } catch {
       if (requestId !== locationRequestSeqRef.current) return;
       previewLocation(myLocation, { zoom: DEFAULT_ZOOM });

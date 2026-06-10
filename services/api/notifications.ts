@@ -5,10 +5,14 @@ export type NotificationPlatform = "IOS" | "ANDROID";
 export type NotificationType =
   | "LIKED_ON_COLLECTION"
   | "COMMENTED_ON_COLLECTION"
-  | "REPLIED_ON_COMMENT"
+  | "REPLIED_TO_COMMENT"
   | "BIRD_ID_SUGGESTED_ON_COLLECTION"
+  | "SUGGESTED_BIRD_ID_ON_COLLECTION"
   | "BIRD_ID_ADOPTED_ON_COLLECTION"
-  | "NOTICE"
+  | "COMMENTED_ON_FREE_BOARD_POST"
+  | "REPLIED_TO_FREE_BOARD_COMMENT"
+  | "SYSTEM_PUBLISHED_ANNOUNCEMENT"
+  | "SYSTEM_ADMIN_MESSAGE"
   | string;
 
 export type UpsertNotificationTokenRequest = {
@@ -108,7 +112,10 @@ export type NotificationListResponse = {
 
 export const fetchNotificationsApi = async (): Promise<NotificationListResponse> => {
   try {
-    const res = await axiosPrivate.get<NotificationListResponse>("/notifications");
+    const res = await axiosPrivate.get<NotificationListResponse>(
+      "/notifications",
+      { showOverlay: false } as any,
+    );
     return res.data;
   } catch (e) {
     console.log("[fetchNotificationsApi] ERROR", e);
@@ -125,6 +132,7 @@ export const fetchUnreadNotificationCountApi =
     try {
       const res = await axiosPrivate.get<NotificationUnreadCountResponse>(
         "/notifications/unread-count",
+        { showOverlay: false } as any,
       );
       return res.data;
     } catch (e) {
@@ -152,6 +160,7 @@ export const fetchNotificationSettingsApi = async (
       "/notifications/settings",
       {
         params: { deviceId, ...(platform ? { platform } : {}) },
+        showOverlay: false,
       },
     );
     return res.data;

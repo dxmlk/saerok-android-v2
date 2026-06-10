@@ -61,6 +61,8 @@ const CAMERA_IDLE_COMMIT_MS = 120;
 const ENABLE_BUBBLE_MARKERS = true;
 const MIN_VISIBLE_BUFFER_METERS = 120;
 const MIN_RETAINED_BUFFER_METERS = 180;
+const MAX_VISIBLE_SINGLE_MARKERS = 90;
+const MAX_VISIBLE_BUBBLE_MARKERS = 16;
 
 const USE_NATIVE_SINGLE_MARKER_IMAGE = false;
 const TRANSPARENT_PIXEL =
@@ -365,6 +367,12 @@ export default function NaverMap({
       (halfWidthMeters + MIN_RETAINED_BUFFER_METERS) / metersPerLngDegree;
     const previousVisibleSingleIds = visibleSingleIdsRef.current;
 
+    const baseVisibleMarkers = markers.filter(
+      (item) =>
+        Math.abs(item.latitude - viewCenter.lat) <= halfLatDelta &&
+        Math.abs(item.longitude - viewCenter.lng) <= halfLngDelta,
+    );
+
     const visibleMarkers = markers.filter((item) => {
       const isInsideBase =
         Math.abs(item.latitude - viewCenter.lat) <= halfLatDelta &&
@@ -379,11 +387,20 @@ export default function NaverMap({
         Math.abs(item.longitude - viewCenter.lng) <= retainedHalfLngDelta
       );
     });
+    const nearestVisibleMarkers = [...visibleMarkers]
+      .sort((a, b) => {
+        const aDist =
+          Math.abs(a.latitude - viewCenter.lat) +
+          Math.abs(a.longitude - viewCenter.lng);
+        const bDist =
+          Math.abs(b.latitude - viewCenter.lat) +
+          Math.abs(b.longitude - viewCenter.lng);
+        return aDist - bDist;
+      })
+      .slice(0, MAX_VISIBLE_SINGLE_MARKERS);
+
     visibleSingleIdsRef.current = new Set(
-      visibleMarkers.map((item) => item.collectionId),
-    );
-    const hiddenMarkers = markers.filter(
-      (item) => !visibleSingleIdsRef.current.has(item.collectionId),
+      nearestVisibleMarkers.map((item) => item.collectionId),
     );
     const clusterMarkers = (
       source: NearbyCollectionItem[],
@@ -440,26 +457,16 @@ export default function NaverMap({
     };
 
     if (!step || markerMode !== "cluster") {
-      const hiddenClusterStep = Math.max(
-        clusterStepByZoom(CLUSTER_TO_SINGLE_ZOOM - ZOOM_HYSTERESIS) * 0.35,
-        0.003,
-      );
-      const visibleSingles = visibleMarkers.map((item) => ({
+      return nearestVisibleMarkers.map((item) => ({
         type: "single" as const,
         id: `single-${item.collectionId}`,
         latitude: item.latitude,
         longitude: item.longitude,
         item,
       }));
-      const hiddenClusters = clusterMarkers(
-        hiddenMarkers,
-        hiddenClusterStep,
-      ).filter((entry) => entry.type === "cluster");
-
-      return [...hiddenClusters, ...visibleSingles];
     }
 
-    return clusterMarkers(markers, step);
+    return clusterMarkers(baseVisibleMarkers, step);
   }, [
     markerMode,
     markers,
@@ -493,7 +500,10 @@ export default function NaverMap({
         return aDist - bDist;
       });
 
-    const nextBubbleCandidates = sortedSingles;
+    const nextBubbleCandidates = sortedSingles.slice(
+      0,
+      MAX_VISIBLE_BUBBLE_MARKERS,
+    );
     const nextBubbleCandidateIdSet = new Set(
       nextBubbleCandidates.map((entry) => entry.id),
     );

@@ -29,6 +29,7 @@ import TouchableOpacity from "@/components/common/TouchableOpacity";
 type Props = {
   collectionId: number;
   variant?: "default" | "floating" | "vertical";
+  autoOpen?: boolean;
 };
 
 function LikeSheet({
@@ -209,6 +210,7 @@ function LikeSheet({
 export default function CollectionLikeButton({
   collectionId,
   variant = "default",
+  autoOpen = false,
 }: Props) {
   const router = useRouter();
   const { isLoggedIn } = useAuth();
@@ -272,7 +274,9 @@ export default function CollectionLikeButton({
     } catch {}
   };
 
-  const openLikeSheet = async () => {
+  const autoOpenedRef = useRef(false);
+
+  const openLikeSheet = React.useCallback(async () => {
     try {
       const items = await fetchCollectionLikeListApi(collectionId);
       setLikeUsers(items);
@@ -280,7 +284,15 @@ export default function CollectionLikeButton({
       force((v) => v + 1);
     } catch {}
     setSheetOpen(true);
-  };
+  }, [collectionId]);
+
+  useEffect(() => {
+    if (!autoOpen || autoOpenedRef.current || !collectionId) return;
+    autoOpenedRef.current = true;
+    requestAnimationFrame(() => {
+      void openLikeSheet();
+    });
+  }, [autoOpen, collectionId, openLikeSheet]);
 
   return (
     <View
